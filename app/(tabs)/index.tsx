@@ -67,8 +67,12 @@ export default function HomeScreen() {
     loadData();
   };
 
-  const handleNewPayment = () => {
+  const handleQRScan = () => {
     router.push('/scanner');
+  };
+
+  const handleManualEntry = () => {
+    router.push('/manual-entry');
   };
 
   return (
@@ -172,25 +176,54 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Bottom padding for FAB */}
-        <View style={{ height: 100 }} />
+        {/* Bottom padding for FABs */}
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
+      {/* Payment Options */}
+      <View
         style={[
-          styles.fab,
+          styles.paymentOptions,
           {
-            backgroundColor: colors.tint,
-            bottom: insets.bottom + Spacing.lg,
+            bottom: insets.bottom + Spacing.md,
           },
         ]}
-        onPress={handleNewPayment}
-        activeOpacity={0.8}
       >
-        <Ionicons name="scan" size={24} color="#fff" />
-        <Text style={styles.fabText}>New Payment</Text>
-      </TouchableOpacity>
+        {/* QR Scan Button */}
+        <TouchableOpacity
+          style={[
+            styles.paymentButton,
+            styles.qrButton,
+            {
+              backgroundColor: colors.tint,
+            },
+          ]}
+          onPress={handleQRScan}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="scan" size={24} color="#fff" />
+          <Text style={styles.paymentButtonText}>Scan QR</Text>
+        </TouchableOpacity>
+
+        {/* Manual Entry Button */}
+        <TouchableOpacity
+          style={[
+            styles.paymentButton,
+            styles.manualButton,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={handleManualEntry}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="create-outline" size={24} color={colors.text} />
+          <Text style={[styles.paymentButtonText, { color: colors.text }]}>
+            Manual
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -268,14 +301,20 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     textAlign: 'center',
   },
-  fab: {
+  paymentOptions: {
     position: 'absolute',
+    left: Spacing.lg,
     right: Spacing.lg,
     flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  paymentButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.md,
     gap: Spacing.sm,
     elevation: 4,
     shadowColor: '#000',
@@ -283,7 +322,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  fabText: {
+  qrButton: {
+    // Primary button styling handled by backgroundColor
+  },
+  manualButton: {
+    borderWidth: 1,
+  },
+  paymentButtonText: {
     color: '#fff',
     fontSize: FontSizes.md,
     fontWeight: '600',
