@@ -16,7 +16,14 @@ I wanted a **local-only**, UPI-first tracker that works entirely on top of:
 No KYC, no bank APIs, no servers.
 
 ## Demo
-TBD
+
+<p align="center">
+  <img src="./assets/demo/home.jpg" alt="Home Screen" width="200" style="margin: 10px;"/>
+  <!-- <img src="./assets/demo/manual-entry.jpg" alt="Manual Entry" width="200" style="margin: 10px;"/> -->
+  <img src="./assets/demo/history.jpg" alt="Transaction History" width="200" style="margin: 10px;"/>
+  <img src="./assets/demo/settings.jpg" alt="Settings" width="200" style="margin: 10px;"/>
+  <img src="./assets/demo/category.jpg" alt="Category Manager" width="200" style="margin: 10px;"/>
+</p>
 
 ## What the App Does (Technically)
 
