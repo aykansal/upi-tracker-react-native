@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "upitracker",
+    "name": "UPI Tracker",
     "slug": "upitracker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,17 +9,24 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "UPI Tracker needs camera access to scan UPI QR codes for payments."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0A0A0A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.upitracker.app"
     },
     "web": {
       "output": "static",
@@ -33,16 +40,29 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0A0A0A",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0A0A0A"
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "UPI Tracker needs camera access to scan UPI QR codes for payments."
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a06efa5f-b141-4545-be62-ad2562ba0381"
+      }
+    },
+    "owner": "aykansal"
   }
 }

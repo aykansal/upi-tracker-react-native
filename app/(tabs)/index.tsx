@@ -1,98 +1,291 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import { format } from 'date-fns';  
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
+import { Transaction, MonthlyStats } from '@/types/transaction';
+import { CategoryPieChart } from '@/components/charts/category-pie-chart';
+import { TransactionCard } from '@/components/transactions/transaction-card';
+import {
+  getRecentTransactions,
+  getMonthlyStats,
+  getCurrentMonthKey,
+  deleteTransaction,
+} from '@/services/storage';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  const insets = useSafeAreaInsets();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const currentMonthKey = getCurrentMonthKey();
+  const currentMonthLabel = format(new Date(), 'MMMM yyyy');
+
+  const loadData = useCallback(async () => {
+    try {
+      const [transactions, stats] = await Promise.all([
+        getRecentTransactions(5),
+        getMonthlyStats(currentMonthKey),
+      ]);
+      setRecentTransactions(transactions);
+      setMonthlyStats(stats);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  }, [currentMonthKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteTransaction(id);
+    loadData();
+  };
+
+  const handleNewPayment = () => {
+    router.push('/scanner');
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + Spacing.md },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.tint}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.appName, { color: colors.tint }]}>
+            UPI Tracker
+          </Text>
+          <Text style={[styles.monthLabel, { color: colors.textSecondary }]}>
+            {currentMonthLabel}
+          </Text>
+        </View>
+
+        {/* Monthly Total Card */}
+        <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
+            Total Spent This Month
+          </Text>
+          <Text style={[styles.totalAmount, { color: colors.text }]}>
+            ₹{(monthlyStats?.total || 0).toLocaleString('en-IN', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })}
+          </Text>
+          <Text style={[styles.transactionCount, { color: colors.textSecondary }]}>
+            {monthlyStats?.transactionCount || 0} transactions
+          </Text>
+        </View>
+
+        {/* Category Breakdown */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Spending by Category
+          </Text>
+          {monthlyStats && (
+            <CategoryPieChart
+              categoryBreakdown={monthlyStats.categoryBreakdown}
+              total={monthlyStats.total}
+            />
+          )}
+        </View>
+
+        {/* Recent Transactions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Recent Transactions
+            </Text>
+            {recentTransactions.length > 0 && (
+              <TouchableOpacity
+                onPress={() => router.push('/history')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={[styles.seeAllButton, { color: colors.tint }]}>
+                  See All
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {recentTransactions.length === 0 ? (
+            <View style={[styles.emptyState, { backgroundColor: colors.card }]}>
+              <Ionicons
+                name="receipt-outline"
+                size={48}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                No transactions yet
+              </Text>
+              <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
+                Tap the button below to start tracking
+              </Text>
+            </View>
+          ) : (
+            recentTransactions.map((transaction) => (
+              <TransactionCard
+                key={transaction.id}
+                transaction={transaction}
+                onDelete={handleDelete}
+              />
+            ))
+          )}
+        </View>
+
+        {/* Bottom padding for FAB */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          {
+            backgroundColor: colors.tint,
+            bottom: insets.bottom + Spacing.lg,
+          },
+        ]}
+        onPress={handleNewPayment}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="scan" size={24} color="#fff" />
+        <Text style={styles.fabText}>New Payment</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
+  },
+  header: {
+    marginBottom: Spacing.lg,
+  },
+  appName: {
+    fontSize: FontSizes.xxl,
+    fontWeight: '700',
+    marginBottom: Spacing.xs,
+  },
+  monthLabel: {
+    fontSize: FontSizes.md,
+  },
+  totalCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  totalLabel: {
+    fontSize: FontSizes.sm,
+    marginBottom: Spacing.xs,
+  },
+  totalAmount: {
+    fontSize: FontSizes.display,
+    fontWeight: '700',
+    marginBottom: Spacing.xs,
+  },
+  transactionCount: {
+    fontSize: FontSizes.sm,
+  },
+  section: {
+    marginBottom: Spacing.xl,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  sectionTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: '600',
+    marginBottom: Spacing.md,
+  },
+  seeAllButton: {
+    fontSize: FontSizes.sm,
+    fontWeight: '500',
+  },
+  emptyState: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: FontSizes.md,
+    fontWeight: '500',
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtext: {
+    fontSize: FontSizes.sm,
+    textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: Spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.sm,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  fabText: {
+    color: '#fff',
+    fontSize: FontSizes.md,
+    fontWeight: '600',
   },
 });
