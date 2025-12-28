@@ -1,9 +1,9 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ThemeProvider, useColorScheme } from '@/contexts/theme-context';
 import { Colors } from '@/constants/theme';
 
 export const unstable_settings = {
@@ -35,12 +35,12 @@ const CustomLightTheme = {
   },
 };
 
-export default function RootLayout() {
+function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   return (
-    <ThemeProvider value={isDark ? CustomDarkTheme : CustomLightTheme}>
+    <NavigationThemeProvider value={isDark ? CustomDarkTheme : CustomLightTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -68,8 +68,22 @@ export default function RootLayout() {
             animation: 'slide_from_bottom',
           }}
         />
+        <Stack.Screen
+          name="category-manager"
+          options={{
+            animation: 'slide_from_right',
+          }}
+        />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+    </NavigationThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutNav />
     </ThemeProvider>
   );
 }

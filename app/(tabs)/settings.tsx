@@ -17,16 +17,22 @@ import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
 import { clearAllData, getAllTransactions } from '@/services/storage';
 import { exportToPDF } from '@/services/pdf-export';
 import { getCategories } from '@/services/category-storage';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/theme-context';
+
+type ThemeMode = 'light' | 'dark' | 'system';
 
 export default function SettingsScreen() {
-  const colorScheme = useColorScheme();
+  const { colorScheme, themeMode, setThemeMode } = useTheme();
   const colors = Colors[colorScheme ?? 'dark'];
   const insets = useSafeAreaInsets();
 
   const [transactionCount, setTransactionCount] = useState(0);
   const [categoryCount, setCategoryCount] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+
+  const handleThemeChange = async (mode: ThemeMode) => {
+    await setThemeMode(mode);
+  };
 
   const loadStats = useCallback(async () => {
     try {
@@ -110,6 +116,101 @@ export default function SettingsScreen() {
       >
         {/* Header */}
         <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+
+        {/* Appearance Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            APPEARANCE
+          </Text>
+
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <View style={styles.themeSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor:
+                      themeMode === 'light' ? colors.tint : 'transparent',
+                    borderColor: themeMode === 'light' ? colors.tint : colors.border,
+                  },
+                ]}
+                onPress={() => handleThemeChange('light')}
+              >
+                <Ionicons
+                  name="sunny"
+                  size={20}
+                  color={themeMode === 'light' ? '#fff' : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.themeOptionText,
+                    {
+                      color: themeMode === 'light' ? '#fff' : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  Light
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor:
+                      themeMode === 'dark' ? colors.tint : 'transparent',
+                    borderColor: themeMode === 'dark' ? colors.tint : colors.border,
+                  },
+                ]}
+                onPress={() => handleThemeChange('dark')}
+              >
+                <Ionicons
+                  name="moon"
+                  size={20}
+                  color={themeMode === 'dark' ? '#fff' : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.themeOptionText,
+                    {
+                      color: themeMode === 'dark' ? '#fff' : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  Dark
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor:
+                      themeMode === 'system' ? colors.tint : 'transparent',
+                    borderColor: themeMode === 'system' ? colors.tint : colors.border,
+                  },
+                ]}
+                onPress={() => handleThemeChange('system')}
+              >
+                <Ionicons
+                  name="phone-portrait"
+                  size={20}
+                  color={themeMode === 'system' ? '#fff' : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.themeOptionText,
+                    {
+                      color: themeMode === 'system' ? '#fff' : colors.textSecondary,
+                    },
+                  ]}
+                >
+                  System
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
 
         {/* Categories Section */}
         <View style={styles.section}>
@@ -324,6 +425,25 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: BorderRadius.lg,
     overflow: 'hidden',
+  },
+  themeSelector: {
+    flexDirection: 'row',
+    padding: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  themeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.xs,
+  },
+  themeOptionText: {
+    fontSize: FontSizes.sm,
+    fontWeight: '500',
   },
   menuItem: {
     flexDirection: 'row',
