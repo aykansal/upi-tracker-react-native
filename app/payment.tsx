@@ -70,15 +70,15 @@ export default function PaymentScreen() {
         transactionNote: reason.trim() || undefined,
       });
 
-      // if (!launched) {
-      //   // Don't save transaction if no UPI app was found
-      //   Alert.alert(
-      //     'No UPI App Found',
-      //     'Could not find a UPI app on your device. Please install a UPI app to make payments.',
-      //     [{ text: 'OK' }]
-      //   );
-      //   return;
-      // }
+      if (!launched) {
+        // Don't save transaction if no UPI app was found
+        Alert.alert(
+          'No UPI App Found',
+          'Could not find a UPI app on your device. Please install a UPI app to make payments.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
       // Only save transaction if payment was successfully launched
       await saveTransaction(

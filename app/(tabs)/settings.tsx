@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,24 +6,24 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-} from 'react-native';
-import { useFocusEffect, router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import Constants from 'expo-constants';
+} from "react-native";
+import { useFocusEffect, router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import Constants from "expo-constants";
 
-import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
-import { clearAllData, getAllTransactions } from '@/services/storage';
-import { exportToPDF } from '@/services/pdf-export';
-import { getCategories } from '@/services/category-storage';
-import { useTheme } from '@/contexts/theme-context';
+import { Colors, BorderRadius, FontSizes, Spacing } from "@/constants/theme";
+import { clearAllData, getAllTransactions } from "@/services/storage";
+import { exportToPDF } from "@/services/pdf-export";
+import { getCategories } from "@/services/category-storage";
+import { useTheme } from "@/contexts/theme-context";
 
-type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeMode = "light" | "dark" | "system";
 
 export default function SettingsScreen() {
   const { colorScheme, themeMode, setThemeMode } = useTheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors[colorScheme ?? "dark"];
   const insets = useSafeAreaInsets();
 
   const [transactionCount, setTransactionCount] = useState(0);
@@ -43,7 +43,7 @@ export default function SettingsScreen() {
       setTransactionCount(transactions.length);
       setCategoryCount(categories.length);
     } catch (error) {
-      console.error('Error loading stats:', error);
+      console.error("Error loading stats:", error);
     }
   }, []);
 
@@ -55,27 +55,27 @@ export default function SettingsScreen() {
 
   const handleClearData = () => {
     if (transactionCount === 0) {
-      Alert.alert('No Data', 'There is no data to clear.');
+      Alert.alert("No Data", "There is no data to clear.");
       return;
     }
 
     Alert.alert(
-      'Clear All Data',
+      "Clear All Data",
       `This will permanently delete all ${transactionCount} transaction${
-        transactionCount !== 1 ? 's' : ''
+        transactionCount !== 1 ? "s" : ""
       }. This action cannot be undone.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Clear All',
-          style: 'destructive',
+          text: "Clear All",
+          style: "destructive",
           onPress: async () => {
             const success = await clearAllData();
             if (success) {
               setTransactionCount(0);
-              Alert.alert('Success', 'All data has been cleared.');
+              Alert.alert("Success", "All data has been cleared.");
             } else {
-              Alert.alert('Error', 'Failed to clear data. Please try again.');
+              Alert.alert("Error", "Failed to clear data. Please try again.");
             }
           },
         },
@@ -85,7 +85,7 @@ export default function SettingsScreen() {
 
   const handleExportAll = async () => {
     if (transactionCount === 0) {
-      Alert.alert('No Data', 'There are no transactions to export.');
+      Alert.alert("No Data", "There are no transactions to export.");
       return;
     }
 
@@ -93,18 +93,18 @@ export default function SettingsScreen() {
     try {
       await exportToPDF();
     } catch (error) {
-      console.error('Export error:', error);
-      Alert.alert('Error', 'Failed to export data. Please try again.');
+      console.error("Export error:", error);
+      Alert.alert("Error", "Failed to export data. Please try again.");
     } finally {
       setIsExporting(false);
     }
   };
 
-  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const appVersion = Constants.expoConfig?.version || "1.0.0";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
       <ScrollView
         style={styles.scrollView}
@@ -117,101 +117,6 @@ export default function SettingsScreen() {
         {/* Header */}
         <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
 
-        {/* Appearance Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            APPEARANCE
-          </Text>
-
-          <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <View style={styles.themeSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === 'light' ? colors.tint : 'transparent',
-                    borderColor: themeMode === 'light' ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange('light')}
-              >
-                <Ionicons
-                  name="sunny"
-                  size={20}
-                  color={themeMode === 'light' ? '#fff' : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.themeOptionText,
-                    {
-                      color: themeMode === 'light' ? '#fff' : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  Light
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === 'dark' ? colors.tint : 'transparent',
-                    borderColor: themeMode === 'dark' ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange('dark')}
-              >
-                <Ionicons
-                  name="moon"
-                  size={20}
-                  color={themeMode === 'dark' ? '#fff' : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.themeOptionText,
-                    {
-                      color: themeMode === 'dark' ? '#fff' : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  Dark
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === 'system' ? colors.tint : 'transparent',
-                    borderColor: themeMode === 'system' ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange('system')}
-              >
-                <Ionicons
-                  name="phone-portrait"
-                  size={20}
-                  color={themeMode === 'system' ? '#fff' : colors.textSecondary}
-                />
-                <Text
-                  style={[
-                    styles.themeOptionText,
-                    {
-                      color: themeMode === 'system' ? '#fff' : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  System
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
         {/* Categories Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -222,7 +127,7 @@ export default function SettingsScreen() {
             {/* Manage Categories */}
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => router.push('/category-manager')}
+              onPress={() => router.push("/category-manager")}
             >
               <View style={styles.menuItemLeft}>
                 <View
@@ -247,7 +152,8 @@ export default function SettingsScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    {categoryCount} categor{categoryCount !== 1 ? 'ies' : 'y'} configured
+                    {categoryCount} categor{categoryCount !== 1 ? "ies" : "y"}{" "}
+                    configured
                   </Text>
                 </View>
               </View>
@@ -288,7 +194,7 @@ export default function SettingsScreen() {
                 </View>
                 <View style={styles.menuItemText}>
                   <Text style={[styles.menuItemLabel, { color: colors.text }]}>
-                    {isExporting ? 'Exporting...' : 'Export All as PDF'}
+                    {isExporting ? "Exporting..." : "Export Transactions"}
                   </Text>
                   <Text
                     style={[
@@ -296,7 +202,7 @@ export default function SettingsScreen() {
                       { color: colors.textSecondary },
                     ]}
                   >
-                    Generate a report of all transactions
+                    Get PDF report of all transactions
                   </Text>
                 </View>
               </View>
@@ -307,7 +213,9 @@ export default function SettingsScreen() {
               />
             </TouchableOpacity>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
 
             {/* Clear Data */}
             <TouchableOpacity style={styles.menuItem} onPress={handleClearData}>
@@ -335,7 +243,7 @@ export default function SettingsScreen() {
                     ]}
                   >
                     {transactionCount} transaction
-                    {transactionCount !== 1 ? 's' : ''} stored
+                    {transactionCount !== 1 ? "s" : ""} stored
                   </Text>
                 </View>
               </View>
@@ -345,6 +253,74 @@ export default function SettingsScreen() {
                 color={colors.textSecondary}
               />
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Appearance Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            APPEARANCE
+          </Text>
+
+          <View style={[styles.card]}>
+            <View style={styles.themeSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor:
+                      themeMode === "light" ? colors.tint : "transparent",
+                    borderColor:
+                      themeMode === "light" ? colors.tint : colors.border,
+                  },
+                ]}
+                onPress={() => handleThemeChange("light")}
+              >
+                <Ionicons
+                  name="sunny"
+                  size={20}
+                  color={themeMode === "light" ? "#fff" : colors.textSecondary}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor:
+                      themeMode === "dark" ? colors.tint : "transparent",
+                    borderColor:
+                      themeMode === "dark" ? colors.tint : colors.border,
+                  },
+                ]}
+                onPress={() => handleThemeChange("dark")}
+              >
+                <Ionicons
+                  name="moon"
+                  size={20}
+                  color={themeMode === "dark" ? "#fff" : colors.textSecondary}
+                />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor:
+                      themeMode === "system" ? colors.tint : "transparent",
+                    borderColor:
+                      themeMode === "system" ? colors.tint : colors.border,
+                  },
+                ]}
+                onPress={() => handleThemeChange("system")}
+              >
+                <Ionicons
+                  name="phone-portrait"
+                  size={20}
+                  color={themeMode === "system" ? "#fff" : colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -359,37 +335,28 @@ export default function SettingsScreen() {
               <Text style={[styles.aboutLabel, { color: colors.text }]}>
                 App Version
               </Text>
-              <Text style={[styles.aboutValue, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.aboutValue, { color: colors.textSecondary }]}
+              >
                 {appVersion}
               </Text>
             </View>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
 
             <View style={styles.aboutItem}>
               <Text style={[styles.aboutLabel, { color: colors.text }]}>
                 Privacy
               </Text>
-              <Text style={[styles.aboutValue, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.aboutValue, { color: colors.textSecondary }]}
+              >
                 All data stored locally
               </Text>
             </View>
           </View>
-        </View>
-
-        {/* Info Card */}
-        <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
-          <Ionicons
-            name="shield-checkmark"
-            size={24}
-            color={colors.tint}
-            style={styles.infoIcon}
-          />
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            UPI Tracker keeps all your data on your device. No accounts, no
-            cloud sync, no data collection. Your financial information stays
-            private.
-          </Text>
         </View>
       </ScrollView>
     </View>
@@ -409,7 +376,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSizes.xxl,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: Spacing.xl,
   },
   section: {
@@ -417,51 +384,51 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: FontSizes.xs,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 1,
     marginBottom: Spacing.sm,
     marginLeft: Spacing.xs,
   },
   card: {
     borderRadius: BorderRadius.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   themeSelector: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: Spacing.sm,
     gap: Spacing.sm,
   },
   themeOption: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     gap: Spacing.xs,
   },
   themeOptionText: {
     fontSize: FontSizes.sm,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: Spacing.md,
   },
   menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: BorderRadius.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: Spacing.md,
   },
   menuItemText: {
@@ -469,7 +436,7 @@ const styles = StyleSheet.create({
   },
   menuItemLabel: {
     fontSize: FontSizes.md,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 2,
   },
   menuItemDescription: {
@@ -477,12 +444,11 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    marginLeft: Spacing.md + 40 + Spacing.md,
   },
   aboutItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: Spacing.md,
   },
   aboutLabel: {
@@ -492,7 +458,7 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
   },
   infoCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     marginTop: Spacing.lg,
@@ -507,4 +473,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-
