@@ -1,26 +1,26 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import * as Sharing from 'expo-sharing';
 
-import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
-import { CategoryType, UPIPaymentData } from '@/types/transaction';
 import { CategoryPicker } from '@/components/transactions/category-picker';
-import { saveTransaction } from '@/services/storage';
+import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { saveTransaction } from '@/services/storage';
+import { CategoryType, UPIPaymentData } from '@/types/transaction';
 
 export default function PaymentScreen() {
   const params = useLocalSearchParams<{

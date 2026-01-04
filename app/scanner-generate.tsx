@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { consoleTransport, logger } from 'react-native-logs';
 import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,6 +24,23 @@ import { UPIPaymentData } from '@/types/transaction';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SCAN_AREA_SIZE = SCREEN_WIDTH * 0.7;
+
+// Create logger instance for this component
+const log = logger.createLogger({
+  transport: consoleTransport,
+  transportOptions: {
+    colors: {
+      info: 'blueBright',
+      warn: 'yellowBright',
+      error: 'redBright',
+    },
+  },
+  severity: __DEV__ ? 'debug' : 'error',
+  enabled: true,
+});
+
+// Extend logger for namespacing
+const logScanner = log.extend('ScannerGenerate');
 
 /**
  * Method 2: Auto-scan + Generate QR
@@ -44,102 +62,182 @@ export default function ScannerGenerateScreen() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    logScanner.debug('Component mounted');
     if (!permission?.granted) {
+      logScanner.info('Camera permission not granted, requesting...');
       requestPermission();
+    } else {
+      logScanner.debug('Camera permission already granted');
     }
   }, [permission]);
 
   // Generate and save QR when data is ready
   useEffect(() => {
+    logScanner.debug('Effect triggered', {
+      hasQrData: !!qrDataToGenerate,
+      hasPaymentData: !!pendingPaymentData,
+      hasQrRef: !!qrRef.current,
+      qrDataLength: qrDataToGenerate?.length || 0,
+    });
+    
     if (qrDataToGenerate && pendingPaymentData && qrRef.current) {
+      logScanner.info('All conditions met, calling generateAndNavigate');
       generateAndNavigate();
     }
   }, [qrDataToGenerate, pendingPaymentData]);
 
   const generateAndNavigate = async () => {
-    if (!qrRef.current || !pendingPaymentData) return;
+    
+    if (!qrRef.current) {
+      logScanner.error('QR ref is null, cannot generate');
+      
+      return;
+    }
+    
+    if (!pendingPaymentData) {
+      logScanner.error('Payment data is null, cannot generate');
+      return;
+    }
 
+    logScanner.info('Starting QR generation process');
     setProcessStatus('Generating QR image...');
 
     try {
+      logScanner.debug('Calling toDataURL on QR component');
       // Get the QR code as base64 data URL
       qrRef.current.toDataURL(async (dataURL: string) => {
         try {
+          logScanner.debug('toDataURL callback received', { dataURLLength: dataURL?.length || 0 });
+          
           // Remove the data:image/png;base64, prefix
           const base64Data = dataURL.replace(/^data:image\/png;base64,/, '');
+          logScanner.debug('Base64 data length after prefix removal', { length: base64Data.length });
           
           // Convert base64 string to Uint8Array
+          logScanner.debug('Converting base64 to Uint8Array...');
           const binaryString = atob(base64Data);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
+          logScanner.debug('Converted to Uint8Array', { size: bytes.length, unit: 'bytes' });
           
           // Create file using new API
           const fileName = `qr_${Date.now()}.png`;
+          logScanner.debug('Creating file', { fileName, cacheDir: Paths.cache.uri });
+          
           const file = new File(Paths.cache, fileName);
+          logScanner.debug('File instance created', { uri: file.uri });
           
           // Create and write the file
+          logScanner.debug('Creating file on disk...');
           file.create({ overwrite: true });
+          logScanner.debug('File created, writing bytes...');
+          
           file.write(bytes);
+          logScanner.info('File written successfully', { 
+            exists: file.exists, 
+            size: file.size, 
+            uri: file.uri 
+          });
 
           setProcessStatus('Redirecting...');
+
+          const navigationParams = {
+            upiId: pendingPaymentData.upiId,
+            payeeName: pendingPaymentData.payeeName,
+            amount: pendingPaymentData.amount?.toString() || '',
+            transactionNote: pendingPaymentData.transactionNote || '',
+            originalQRData: pendingPaymentData.originalQRData || '',
+            isMerchant: pendingPaymentData.isMerchant ? 'true' : 'false',
+            merchantCategory: pendingPaymentData.merchantParams?.mc || '',
+            organizationId: pendingPaymentData.merchantParams?.orgid || '',
+            qrImageUri: file.uri,
+            generatedQR: 'true',
+          };
+          
+          logScanner.debug('Navigation params', {
+            ...navigationParams,
+            originalQRData: navigationParams.originalQRData?.substring(0, 50) + '...',
+          });
 
           // Navigate to payment screen with parsed data and generated image
           router.replace({
             pathname: '/payment',
-            params: {
-              upiId: pendingPaymentData.upiId,
-              payeeName: pendingPaymentData.payeeName,
-              amount: pendingPaymentData.amount?.toString() || '',
-              transactionNote: pendingPaymentData.transactionNote || '',
-              originalQRData: pendingPaymentData.originalQRData || '',
-              isMerchant: pendingPaymentData.isMerchant ? 'true' : 'false',
-              merchantCategory: pendingPaymentData.merchantParams?.mc || '',
-              organizationId: pendingPaymentData.merchantParams?.orgid || '',
-              qrImageUri: file.uri,
-              generatedQR: 'true', // Flag to indicate QR was generated
-            },
+            params: navigationParams,
           });
+          
+          logScanner.info('Navigation completed');
+          
         } catch (error) {
-          console.error('Error saving QR image:', error);
+          logScanner.error('Error saving QR image', error);
           Alert.alert('Error', 'Failed to generate QR image. Please try again.');
           resetState();
+          
         }
       });
     } catch (error) {
-      console.error('Error generating QR:', error);
+      logScanner.error('Error generating QR', error);
       Alert.alert('Error', 'Failed to generate QR image. Please try again.');
       resetState();
+      
     }
   };
 
   const resetState = () => {
+    logScanner.debug('Resetting state');
     setScanned(false);
     setIsProcessing(false);
     setProcessStatus('');
     setPendingPaymentData(null);
     setQrDataToGenerate(null);
+    logScanner.debug('State reset complete');
   };
 
   const handleBarCodeScanned = (result: BarcodeScanningResult) => {
-    if (scanned || isProcessing) return;
+    logScanner.debug('handleBarCodeScanned called', { scanned, isProcessing });
+    
+    if (scanned || isProcessing) {
+      logScanner.debug('Already scanned or processing, ignoring');
+      return;
+    }
+
+    logScanner.info('QR code detected!');
+    logScanner.debug('QR data', { 
+      length: result.data?.length || 0, 
+      preview: result.data?.substring(0, 100) + '...' 
+    });
 
     setScanned(true);
     setIsProcessing(true);
     setProcessStatus('QR detected! Parsing data...');
 
     const qrData = result.data;
+    logScanner.debug('Parsing UPI QR code...');
 
     // Parse the UPI QR code
     const paymentData = parseUPIQRCode(qrData);
+    logScanner.debug('Parse result', { success: !!paymentData });
 
     if (paymentData) {
+      logScanner.debug('Payment data parsed', {
+        upiId: paymentData.upiId,
+        payeeName: paymentData.payeeName,
+        amount: paymentData.amount,
+        isMerchant: paymentData.isMerchant,
+        hasOriginalQRData: !!paymentData.originalQRData,
+        originalQRDataLength: paymentData.originalQRData?.length || 0,
+      });
+      
       setProcessStatus('Data parsed! Generating new QR...');
       setPendingPaymentData(paymentData);
+      
       // Use the original QR data to generate the QR image
-      setQrDataToGenerate(paymentData.originalQRData || qrData);
+      const qrDataForGeneration = paymentData.originalQRData || qrData;
+      logScanner.debug('Setting QR data for generation', { length: qrDataForGeneration.length });
+      setQrDataToGenerate(qrDataForGeneration);
     } else {
+      logScanner.warn('Failed to parse QR code as UPI payment');
       setIsProcessing(false);
       Alert.alert(
         'Invalid QR Code',
