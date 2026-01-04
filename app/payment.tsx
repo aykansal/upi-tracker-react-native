@@ -28,11 +28,19 @@ export default function PaymentScreen() {
     payeeName: string;
     amount: string;
     transactionNote: string;
+    // Merchant support fields
+    originalQRData: string;
+    isMerchant: string;
+    merchantCategory: string;
+    organizationId: string;
   }>();
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
   const insets = useSafeAreaInsets();
+
+  // Determine if this is a merchant transaction
+  const isMerchant = params.isMerchant === 'true';
 
   const [amount, setAmount] = useState(params.amount || '');
   const [category, setCategory] = useState<CategoryType | null>(null);
@@ -43,6 +51,8 @@ export default function PaymentScreen() {
     upiId: params.upiId || '',
     payeeName: params.payeeName || 'Unknown',
     amount: parseFloat(amount) || undefined,
+    isMerchant: isMerchant,
+    originalQRData: params.originalQRData || undefined,
   };
 
   const canPay =
@@ -62,30 +72,37 @@ export default function PaymentScreen() {
     try {
       const amountNum = parseFloat(amount);
 
-      // Try to launch payment first
+      // Launch payment with merchant/P2P detection
+      // For merchant QR: uses original URL unchanged (preserves signature)
+      // For P2P: reconstructs URL with custom amount
       const launched = await launchPayment({
         upiId: paymentData.upiId,
         payeeName: paymentData.payeeName,
         amount: amountNum,
         transactionNote: reason.trim() || undefined,
+        originalQRData: params.originalQRData || undefined,
+        isMerchant: isMerchant,
       });
 
       if (!launched) {
         // Don't save transaction if no UPI app was found
         Alert.alert(
           'No UPI App Found',
-          'Could not find a UPI app on your device. Please install a UPI app to make payments.',
+          'Could not find a UPI app on your device. Please install Google Pay, PhonePe, or another UPI app to make payments.',
           [{ text: 'OK' }]
         );
         return;
       }
 
-      // Only save transaction if payment was successfully launched
+      // Save transaction with merchant tracking fields
       await saveTransaction(
         paymentData,
         category!,
         reason.trim() || undefined,
-        amountNum
+        amountNum,
+        isMerchant ? 'merchant' : 'p2p',
+        params.merchantCategory || undefined,
+        params.organizationId || undefined
       );
 
       // Navigate back to home after launching payment
@@ -128,7 +145,7 @@ export default function PaymentScreen() {
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          New Payment
+          {isMerchant ? 'Merchant Payment' : 'New Payment'}
         </Text>
         <View style={styles.headerButton} />
       </View>
@@ -145,7 +162,11 @@ export default function PaymentScreen() {
           {/* Payee Info Card */}
           <View style={[styles.payeeCard, { backgroundColor: colors.card }]}>
             <View style={styles.payeeIconContainer}>
-              <Ionicons name="person-circle" size={48} color={colors.tint} />
+              <Ionicons 
+                name={isMerchant ? "storefront" : "person-circle"} 
+                size={48} 
+                color={colors.tint} 
+              />
             </View>
             <View style={styles.payeeInfo}>
               <Text
@@ -160,6 +181,14 @@ export default function PaymentScreen() {
               >
                 {paymentData.upiId}
               </Text>
+              {isMerchant && (
+                <View style={[styles.merchantBadge, { backgroundColor: colors.tint + '20' }]}>
+                  <Ionicons name="shield-checkmark" size={12} color={colors.tint} />
+                  <Text style={[styles.merchantBadgeText, { color: colors.tint }]}>
+                    Verified Merchant
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -172,7 +201,7 @@ export default function PaymentScreen() {
               style={[
                 styles.amountInputContainer,
                 {
-                  backgroundColor: colors.card,
+                  backgroundColor: isMerchant ? colors.surface : colors.card,
                   borderColor: colors.border,
                 },
               ]}
@@ -181,15 +210,25 @@ export default function PaymentScreen() {
                 ₹
               </Text>
               <TextInput
-                style={[styles.amountInput, { color: colors.text }]}
+                style={[
+                  styles.amountInput, 
+                  { color: colors.text },
+                  isMerchant && styles.disabledInput
+                ]}
                 value={amount}
                 onChangeText={setAmount}
                 placeholder="0.00"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
+                editable={!isMerchant}
               />
             </View>
+            {isMerchant && (
+              <Text style={[styles.merchantNote, { color: colors.textSecondary }]}>
+                Amount is fixed by the merchant
+              </Text>
+            )}
           </View>
 
           {/* Category Picker */}
@@ -312,6 +351,20 @@ const styles = StyleSheet.create({
   upiId: {
     fontSize: FontSizes.sm,
   },
+  merchantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  merchantBadgeText: {
+    fontSize: FontSizes.xs,
+    fontWeight: '500',
+  },
   inputGroup: {
     marginBottom: Spacing.lg,
   },
@@ -338,6 +391,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: Spacing.md,
   },
+  disabledInput: {
+    opacity: 0.7,
+  },
+  merchantNote: {
+    fontSize: FontSizes.xs,
+    marginTop: Spacing.xs,
+    fontStyle: 'italic',
+  },
   textInput: {
     borderWidth: 1,
     borderRadius: BorderRadius.md,
@@ -363,4 +424,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

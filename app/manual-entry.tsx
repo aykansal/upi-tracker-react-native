@@ -50,7 +50,7 @@ export default function ManualEntryScreen() {
     const payeeName = trimmedUpiId.split('@')[0];
     const formattedUpiId = formatUPIId(trimmedUpiId);
 
-    // Navigate to payment screen
+    // Navigate to payment screen (manual entry is always P2P)
     router.replace({
       pathname: '/payment',
       params: {
@@ -58,6 +58,11 @@ export default function ManualEntryScreen() {
         payeeName: payeeName.charAt(0).toUpperCase() + payeeName.slice(1),
         amount: '',
         transactionNote: '',
+        // Manual entry is always P2P (not merchant)
+        originalQRData: '',
+        isMerchant: 'false',
+        merchantCategory: '',
+        organizationId: '',
       },
     });
   };

@@ -1,18 +1,27 @@
-import { UPIPaymentData } from '@/types/transaction';
+import { UPIPaymentData, MerchantParams } from '@/types/transaction';
+
+/** Parameters that indicate a merchant QR code */
+export const MERCHANT_PARAM_KEYS = ['mode', 'purpose', 'mc', 'orgid', 'sign', 'tid'] as const;
 
 /**
  * Parse UPI QR code data
  * Supports multiple formats:
  * - upi://pay?pa=merchant@upi&pn=MerchantName&am=100.00&cu=INR
  * - UPI://pay?pa=...
- * - Some variations with additional parameters
+ * - Merchant QR codes with sign, mc, mode, orgid, purpose, tid parameters
+ * 
+ * For merchant QR codes (with signature), preserves original URL to maintain security.
+ * For P2P transactions, allows URL reconstruction with custom amounts.
  */
 export const parseUPIQRCode = (qrData: string): UPIPaymentData | null => {
   try {
     if (!qrData) return null;
 
-    // Normalize the URL scheme to lowercase
-    let normalizedData = qrData.trim();
+    // Preserve original QR data exactly as scanned (before any processing)
+    const originalQRData = qrData.trim();
+
+    // Normalize the URL scheme for parsing only
+    let normalizedData = originalQRData;
     
     // Handle case-insensitive upi:// prefix
     if (normalizedData.toLowerCase().startsWith('upi://')) {
@@ -65,11 +74,30 @@ export const parseUPIQRCode = (qrData: string): UPIPaymentData | null => {
       }
     }
 
+    // Check for merchant params and extract them
+    const merchantParams: MerchantParams = {};
+    let isMerchant = false;
+
+    for (const key of MERCHANT_PARAM_KEYS) {
+      const value = params.get(key);
+      if (value) {
+        // Special case: if sign exists but is empty, treat as P2P
+        if (key === 'sign' && !value.trim()) {
+          continue;
+        }
+        merchantParams[key as keyof MerchantParams] = value;
+        isMerchant = true;
+      }
+    }
+
     return {
       upiId,
       payeeName,
       amount,
       transactionNote,
+      originalQRData,
+      isMerchant,
+      merchantParams: isMerchant ? merchantParams : undefined,
     };
   } catch (error) {
     console.error('Failed to parse UPI QR code:', error);
@@ -96,4 +124,3 @@ export const formatUPIId = (upiId: string): string => {
   if (!upiId) return '';
   return upiId.trim().toLowerCase();
 };
-

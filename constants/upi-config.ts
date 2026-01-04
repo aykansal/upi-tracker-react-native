@@ -2,12 +2,16 @@
  * UPI Configuration and Intent URLs
  */
 
+import { MERCHANT_PARAM_KEYS } from '@/services/upi-parser';
+
 export const UPI_CONFIG = {
   currency: 'INR',
 };
 
 /**
- * Build universal UPI intent URL - lets user choose their preferred app
+ * Build universal UPI intent URL for P2P transactions.
+ * Only includes basic params (pa, pn, am, cu, tn) - no merchant security params.
+ * Use this for manual entry or when reconstructing P2P payments.
  */
 export const buildUPIUrl = (params: {
   upiId: string;
@@ -32,48 +36,39 @@ export const buildUPIUrl = (params: {
 };
 
 /**
- * Parse UPI QR code data
- * Format: upi://pay?pa=merchant@upi&pn=MerchantName&am=100.00&cu=INR
+ * Check if QR data contains merchant-specific parameters.
+ * Merchant QR codes include sign, mc, mode, orgid, purpose, or tid params.
+ * These require the original URL to be preserved for security validation.
+ * 
+ * @param qrData - Raw QR code data string
+ * @returns true if QR contains merchant parameters
  */
-export const parseUPIQRCode = (qrData: string): {
-  upiId: string;
-  payeeName: string;
-  amount?: number;
-  transactionNote?: string;
-} | null => {
+export const isMerchantQRCode = (qrData: string): boolean => {
   try {
-    // Handle both upi:// and UPI:// prefixes
-    const normalizedData = qrData.toLowerCase().startsWith('upi://')
-      ? qrData
-      : qrData.toLowerCase().startsWith('upi:')
-      ? 'upi://' + qrData.substring(4)
-      : null;
-
-    if (!normalizedData) {
-      return null;
+    if (!qrData) return false;
+    
+    // Normalize for parsing
+    let normalizedData = qrData.trim();
+    if (normalizedData.toLowerCase().startsWith('upi://')) {
+      normalizedData = 'upi://' + normalizedData.substring(6);
+    } else if (normalizedData.toLowerCase().startsWith('upi:')) {
+      normalizedData = 'upi://' + normalizedData.substring(4);
+    } else {
+      return false;
     }
-
+    
     const url = new URL(normalizedData);
-    const params = url.searchParams;
-
-    const upiId = params.get('pa');
-    const payeeName = params.get('pn') || 'Unknown';
-    const amountStr = params.get('am');
-    const transactionNote = params.get('tn') || undefined;
-
-    if (!upiId) {
-      return null;
-    }
-
-    return {
-      upiId,
-      payeeName: decodeURIComponent(payeeName),
-      amount: amountStr ? parseFloat(amountStr) : undefined,
-      transactionNote: transactionNote ? decodeURIComponent(transactionNote) : undefined,
-    };
-  } catch (error) {
-    console.error('Failed to parse UPI QR code:', error);
-    return null;
+    
+    // Check if any merchant param key exists with a non-empty value
+    return MERCHANT_PARAM_KEYS.some(key => {
+      const value = url.searchParams.get(key);
+      // For 'sign', ensure it's not empty
+      if (key === 'sign') {
+        return value && value.trim().length > 0;
+      }
+      return value !== null;
+    });
+  } catch {
+    return false;
   }
 };
-

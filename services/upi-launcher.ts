@@ -6,14 +6,46 @@ interface LaunchPaymentParams {
   payeeName: string;
   amount: number;
   transactionNote?: string;
+  /** Original QR URL for merchant transactions - preserves signature */
+  originalQRData?: string;
+  /** Whether this is a merchant QR code transaction */
+  isMerchant?: boolean;
 }
 
 /**
- * Launch UPI payment - lets user choose their preferred UPI app
+ * Launch UPI payment - handles both merchant and P2P transactions.
+ * 
+ * For merchant QR codes (isMerchant=true with originalQRData):
+ *   - Uses the original QR URL unchanged to preserve the digital signature
+ *   - This prevents "merchant transaction failed" errors from GPay
+ * 
+ * For P2P transactions (isMerchant=false or no originalQRData):
+ *   - Reconstructs the UPI URL with custom amount using buildUPIUrl()
+ *   - Allows users to modify amount for personal payments
  */
 export const launchPayment = async (params: LaunchPaymentParams): Promise<boolean> => {
   try {
-    const upiUrl = buildUPIUrl(params);
+    let upiUrl: string;
+
+    // Merchant flow: use original QR URL unchanged (preserves signature)
+    if (params.isMerchant && params.originalQRData) {
+      upiUrl = params.originalQRData;
+      console.log('Launching merchant payment with original QR URL');
+    } else {
+      // P2P flow: reconstruct URL with custom amount
+      // This also serves as fallback if merchant but missing originalQRData
+      if (params.isMerchant && !params.originalQRData) {
+        console.warn('Merchant transaction missing originalQRData, falling back to P2P reconstruction');
+      }
+      upiUrl = buildUPIUrl({
+        upiId: params.upiId,
+        payeeName: params.payeeName,
+        amount: params.amount,
+        transactionNote: params.transactionNote,
+      });
+      console.log('Launching P2P payment with reconstructed URL');
+    }
+
     const canOpenUPI = await Linking.canOpenURL(upiUrl);
     
     if (canOpenUPI) {
@@ -40,4 +72,3 @@ export const isUPIAvailable = async (): Promise<boolean> => {
     return false;
   }
 };
-

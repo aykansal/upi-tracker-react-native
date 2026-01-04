@@ -44,6 +44,7 @@ export default function ScannerScreen() {
 
     if (paymentData) {
       // Navigate to payment screen with parsed data
+      // Include merchant params for proper handling of merchant QR codes
       router.replace({
         pathname: '/payment',
         params: {
@@ -51,6 +52,11 @@ export default function ScannerScreen() {
           payeeName: paymentData.payeeName,
           amount: paymentData.amount?.toString() || '',
           transactionNote: paymentData.transactionNote || '',
+          // Merchant support fields
+          originalQRData: paymentData.originalQRData || '',
+          isMerchant: paymentData.isMerchant ? 'true' : 'false',
+          merchantCategory: paymentData.merchantParams?.mc || '',
+          organizationId: paymentData.merchantParams?.orgid || '',
         },
       });
     } else {
