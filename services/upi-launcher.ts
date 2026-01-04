@@ -1,73 +1,43 @@
-import * as Linking from 'expo-linking';
-import { buildUPIUrl } from '@/constants/upi-config';
+import * as Sharing from 'expo-sharing';
 
-interface LaunchPaymentParams {
-  upiId: string;
-  payeeName: string;
-  amount: number;
-  transactionNote?: string;
-  /** Original QR URL for merchant transactions - preserves signature */
-  originalQRData?: string;
-  /** Whether this is a merchant QR code transaction */
-  isMerchant?: boolean;
+interface ShareQRParams {
+  /** URI of the captured QR code image */
+  qrImageUri: string;
 }
 
 /**
- * Launch UPI payment - handles both merchant and P2P transactions.
- * 
- * For merchant QR codes (isMerchant=true with originalQRData):
- *   - Uses the original QR URL unchanged to preserve the digital signature
- *   - This prevents "merchant transaction failed" errors from GPay
- * 
- * For P2P transactions (isMerchant=false or no originalQRData):
- *   - Reconstructs the UPI URL with custom amount using buildUPIUrl()
- *   - Allows users to modify amount for personal payments
+ * Share QR image to UPI apps via Android share sheet.
+ * User can select GPay, PhonePe, Paytm, or any other UPI app.
+ * The selected app will scan the QR from the shared image and process payment.
  */
-export const launchPayment = async (params: LaunchPaymentParams): Promise<boolean> => {
+export const shareQRImage = async (params: ShareQRParams): Promise<boolean> => {
   try {
-    let upiUrl: string;
-
-    // Merchant flow: use original QR URL unchanged (preserves signature)
-    if (params.isMerchant && params.originalQRData) {
-      upiUrl = params.originalQRData;
-      console.log('Launching merchant payment with original QR URL');
-    } else {
-      // P2P flow: reconstruct URL with custom amount
-      // This also serves as fallback if merchant but missing originalQRData
-      if (params.isMerchant && !params.originalQRData) {
-        console.warn('Merchant transaction missing originalQRData, falling back to P2P reconstruction');
-      }
-      upiUrl = buildUPIUrl({
-        upiId: params.upiId,
-        payeeName: params.payeeName,
-        amount: params.amount,
-        transactionNote: params.transactionNote,
-      });
-      console.log('Launching P2P payment with reconstructed URL');
+    // Check if sharing is available on this device
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      console.error('Sharing is not available on this device');
+      return false;
     }
 
-    const canOpenUPI = await Linking.canOpenURL(upiUrl);
-    
-    if (canOpenUPI) {
-      await Linking.openURL(upiUrl);
-      return true;
-    }
+    // Share the QR image via native share sheet
+    await Sharing.shareAsync(params.qrImageUri, {
+      mimeType: 'image/jpeg',
+      dialogTitle: 'Pay with UPI App',
+    });
 
-    console.error('No UPI app available to handle payment');
-    return false;
+    return true;
   } catch (error) {
-    console.error('Error launching payment:', error);
+    console.error('Error sharing QR image:', error);
     return false;
   }
 };
 
 /**
- * Check if any UPI app is available on the device
+ * Check if sharing is available on the device
  */
-export const isUPIAvailable = async (): Promise<boolean> => {
+export const isSharingAvailable = async (): Promise<boolean> => {
   try {
-    const testUrl = 'upi://pay';
-    return await Linking.canOpenURL(testUrl);
+    return await Sharing.isAvailableAsync();
   } catch (error) {
     return false;
   }

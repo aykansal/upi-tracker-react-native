@@ -14,12 +14,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Sharing from 'expo-sharing';
 
 import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
 import { CategoryType, UPIPaymentData } from '@/types/transaction';
 import { CategoryPicker } from '@/components/transactions/category-picker';
 import { saveTransaction } from '@/services/storage';
-import { launchPayment } from '@/services/upi-launcher';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function PaymentScreen() {
@@ -33,14 +33,21 @@ export default function PaymentScreen() {
     isMerchant: string;
     merchantCategory: string;
     organizationId: string;
+    // QR image for sharing to UPI apps
+    qrImageUri: string;
+    // Method flags
+    imageOnlyMode: string; // Method 1: only has image, no parsed data
+    generatedQR: string;   // Method 2: QR was generated from data
   }>();
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
   const insets = useSafeAreaInsets();
 
-  // Determine if this is a merchant transaction
+  // Determine mode and transaction type
   const isMerchant = params.isMerchant === 'true';
+  const isImageOnlyMode = params.imageOnlyMode === 'true';
+  const isGeneratedQR = params.generatedQR === 'true';
 
   const [amount, setAmount] = useState(params.amount || '');
   const [category, setCategory] = useState<CategoryType | null>(null);
@@ -55,15 +62,22 @@ export default function PaymentScreen() {
     originalQRData: params.originalQRData || undefined,
   };
 
-  const canPay =
-    paymentData.upiId &&
-    amount &&
-    parseFloat(amount) > 0 &&
-    category;
+  const qrImageUri = params.qrImageUri || '';
+  const hasQrImage = !!qrImageUri;
+
+  // For image-only mode, we only need the image and amount for tracking
+  // For normal mode, we need upiId, amount, category, and image
+  const canPay = isImageOnlyMode
+    ? hasQrImage && amount && parseFloat(amount) > 0 && category
+    : paymentData.upiId && amount && parseFloat(amount) > 0 && category && hasQrImage;
 
   const handlePay = async () => {
     if (!canPay) {
-      Alert.alert('Missing Information', 'Please fill in all required fields.');
+      if (!hasQrImage) {
+        Alert.alert('QR Image Missing', 'Could not capture QR image. Please scan again.');
+      } else {
+        Alert.alert('Missing Information', 'Please fill in all required fields.');
+      }
       return;
     }
 
@@ -72,29 +86,19 @@ export default function PaymentScreen() {
     try {
       const amountNum = parseFloat(amount);
 
-      // Launch payment with merchant/P2P detection
-      // For merchant QR: uses original URL unchanged (preserves signature)
-      // For P2P: reconstructs URL with custom amount
-      const launched = await launchPayment({
-        upiId: paymentData.upiId,
-        payeeName: paymentData.payeeName,
-        amount: amountNum,
-        transactionNote: reason.trim() || undefined,
-        originalQRData: params.originalQRData || undefined,
-        isMerchant: isMerchant,
-      });
-
-      if (!launched) {
-        // Don't save transaction if no UPI app was found
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
         Alert.alert(
-          'No UPI App Found',
-          'Could not find a UPI app on your device. Please install Google Pay, PhonePe, or another UPI app to make payments.',
+          'Sharing Not Available',
+          'Sharing is not available on this device.',
           [{ text: 'OK' }]
         );
+        setIsLoading(false);
         return;
       }
 
-      // Save transaction with merchant tracking fields
+      // Save transaction for tracking (before sharing in case user doesn't complete payment)
       await saveTransaction(
         paymentData,
         category!,
@@ -105,11 +109,17 @@ export default function PaymentScreen() {
         params.organizationId || undefined
       );
 
-      // Navigate back to home after launching payment
+      // Share QR image to UPI app via share sheet
+      await Sharing.shareAsync(qrImageUri, {
+        mimeType: 'image/jpeg',
+        dialogTitle: 'Pay with UPI App',
+      });
+
+      // Navigate back to home after sharing
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Payment error:', error);
-      Alert.alert('Error', 'Failed to process payment. Please try again.');
+      Alert.alert('Error', 'Failed to share QR image. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +155,7 @@ export default function PaymentScreen() {
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {isMerchant ? 'Merchant Payment' : 'New Payment'}
+          {isImageOnlyMode ? 'Image Capture Mode' : isGeneratedQR ? 'Generated QR Mode' : 'New Payment'}
         </Text>
         <View style={styles.headerButton} />
       </View>
@@ -192,16 +202,26 @@ export default function PaymentScreen() {
             </View>
           </View>
 
+          {/* QR Image Warning */}
+          {!hasQrImage && (
+            <View style={[styles.warningCard, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="warning" size={20} color="#D97706" />
+              <Text style={styles.warningText}>
+                QR image not captured. Please go back and scan again.
+              </Text>
+            </View>
+          )}
+
           {/* Amount Input */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>
-              Amount *
+              Amount (for tracking) *
             </Text>
             <View
               style={[
                 styles.amountInputContainer,
                 {
-                  backgroundColor: isMerchant ? colors.surface : colors.card,
+                  backgroundColor: colors.card,
                   borderColor: colors.border,
                 },
               ]}
@@ -213,7 +233,6 @@ export default function PaymentScreen() {
                 style={[
                   styles.amountInput, 
                   { color: colors.text },
-                  isMerchant && styles.disabledInput
                 ]}
                 value={amount}
                 onChangeText={setAmount}
@@ -221,14 +240,11 @@ export default function PaymentScreen() {
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
-                editable={!isMerchant}
               />
             </View>
-            {isMerchant && (
-              <Text style={[styles.merchantNote, { color: colors.textSecondary }]}>
-                Amount is fixed by the merchant
-              </Text>
-            )}
+            <Text style={[styles.trackingNote, { color: colors.textSecondary }]}>
+              This amount is for tracking only. Actual payment amount is in the QR.
+            </Text>
           </View>
 
           {/* Category Picker */}
@@ -283,12 +299,12 @@ export default function PaymentScreen() {
             activeOpacity={0.8}
           >
             {isLoading ? (
-              <Text style={styles.payButtonText}>Processing...</Text>
+              <Text style={styles.payButtonText}>Opening...</Text>
             ) : (
               <>
-                <Ionicons name="wallet" size={20} color="#fff" />
+                <Ionicons name="share-outline" size={20} color="#fff" />
                 <Text style={styles.payButtonText}>
-                  Pay {amount ? `₹${amount}` : 'Now'}
+                  Open in UPI App
                 </Text>
               </>
             )}
@@ -391,13 +407,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: Spacing.md,
   },
-  disabledInput: {
-    opacity: 0.7,
-  },
-  merchantNote: {
+  trackingNote: {
     fontSize: FontSizes.xs,
     marginTop: Spacing.xs,
     fontStyle: 'italic',
+  },
+  warningCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: FontSizes.sm,
+    color: '#92400E',
   },
   textInput: {
     borderWidth: 1,

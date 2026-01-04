@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
+import { File, Paths } from 'expo-file-system';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
@@ -22,13 +24,21 @@ import { UPIPaymentData } from '@/types/transaction';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SCAN_AREA_SIZE = SCREEN_WIDTH * 0.7;
 
-export default function ScannerScreen() {
+/**
+ * Method 2: Auto-scan + Generate QR
+ * - Automatically scans QR using barcode scanner
+ * - Parses the UPI data from scanned QR
+ * - Generates a new QR image from the parsed data
+ * - Both generated image and data are sent to payment screen
+ */
+export default function ScannerGenerateScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [captureStatus, setCaptureStatus] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processStatus, setProcessStatus] = useState('');
   const [pendingPaymentData, setPendingPaymentData] = useState<UPIPaymentData | null>(null);
-  const cameraRef = useRef<CameraView>(null);
+  const [qrDataToGenerate, setQrDataToGenerate] = useState<string | null>(null);
+  const qrRef = useRef<any>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
   const insets = useSafeAreaInsets();
@@ -39,89 +49,105 @@ export default function ScannerScreen() {
     }
   }, [permission]);
 
-  // Effect to capture image after QR is scanned
+  // Generate and save QR when data is ready
   useEffect(() => {
-    if (pendingPaymentData && isCapturing) {
-      captureAndNavigate(pendingPaymentData);
+    if (qrDataToGenerate && pendingPaymentData && qrRef.current) {
+      generateAndNavigate();
     }
-  }, [pendingPaymentData, isCapturing]);
+  }, [qrDataToGenerate, pendingPaymentData]);
 
-  const captureAndNavigate = async (paymentData: UPIPaymentData) => {
-    setCaptureStatus('Capturing QR image...');
-    
-    // Wait a moment for camera to stabilize after barcode scan stops
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    let qrImageUri = '';
-    let retries = 3;
-    
-    while (retries > 0 && !qrImageUri) {
-      try {
-        setCaptureStatus(`Taking photo... (attempt ${4 - retries}/3)`);
-        
-        if (cameraRef.current) {
-          const photo = await cameraRef.current.takePictureAsync({
-            quality: 0.7,
-            skipProcessing: false,
+  const generateAndNavigate = async () => {
+    if (!qrRef.current || !pendingPaymentData) return;
+
+    setProcessStatus('Generating QR image...');
+
+    try {
+      // Get the QR code as base64 data URL
+      qrRef.current.toDataURL(async (dataURL: string) => {
+        try {
+          // Remove the data:image/png;base64, prefix
+          const base64Data = dataURL.replace(/^data:image\/png;base64,/, '');
+          
+          // Convert base64 string to Uint8Array
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Create file using new API
+          const fileName = `qr_${Date.now()}.png`;
+          const file = new File(Paths.cache, fileName);
+          
+          // Create and write the file
+          file.create({ overwrite: true });
+          file.write(bytes);
+
+          setProcessStatus('Redirecting...');
+
+          // Navigate to payment screen with parsed data and generated image
+          router.replace({
+            pathname: '/payment',
+            params: {
+              upiId: pendingPaymentData.upiId,
+              payeeName: pendingPaymentData.payeeName,
+              amount: pendingPaymentData.amount?.toString() || '',
+              transactionNote: pendingPaymentData.transactionNote || '',
+              originalQRData: pendingPaymentData.originalQRData || '',
+              isMerchant: pendingPaymentData.isMerchant ? 'true' : 'false',
+              merchantCategory: pendingPaymentData.merchantParams?.mc || '',
+              organizationId: pendingPaymentData.merchantParams?.orgid || '',
+              qrImageUri: file.uri,
+              generatedQR: 'true', // Flag to indicate QR was generated
+            },
           });
-          qrImageUri = photo?.uri || '';
+        } catch (error) {
+          console.error('Error saving QR image:', error);
+          Alert.alert('Error', 'Failed to generate QR image. Please try again.');
+          resetState();
         }
-        
-        if (qrImageUri) {
-          break;
-        }
-      } catch (error) {
-        console.error(`Capture attempt ${4 - retries} failed:`, error);
-        retries--;
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
+      });
+    } catch (error) {
+      console.error('Error generating QR:', error);
+      Alert.alert('Error', 'Failed to generate QR image. Please try again.');
+      resetState();
     }
-    
-    setCaptureStatus('Redirecting...');
-    
-    // Navigate to payment screen with parsed data and image
-    router.replace({
-      pathname: '/payment',
-      params: {
-        upiId: paymentData.upiId,
-        payeeName: paymentData.payeeName,
-        amount: paymentData.amount?.toString() || '',
-        transactionNote: paymentData.transactionNote || '',
-        // Merchant support fields
-        originalQRData: paymentData.originalQRData || '',
-        isMerchant: paymentData.isMerchant ? 'true' : 'false',
-        merchantCategory: paymentData.merchantParams?.mc || '',
-        organizationId: paymentData.merchantParams?.orgid || '',
-        // QR image for sharing
-        qrImageUri: qrImageUri,
-      },
-    });
+  };
+
+  const resetState = () => {
+    setScanned(false);
+    setIsProcessing(false);
+    setProcessStatus('');
+    setPendingPaymentData(null);
+    setQrDataToGenerate(null);
   };
 
   const handleBarCodeScanned = (result: BarcodeScanningResult) => {
-    if (scanned || isCapturing) return;
-    
+    if (scanned || isProcessing) return;
+
     setScanned(true);
+    setIsProcessing(true);
+    setProcessStatus('QR detected! Parsing data...');
+
     const qrData = result.data;
 
     // Parse the UPI QR code
     const paymentData = parseUPIQRCode(qrData);
 
     if (paymentData) {
-      // Set pending data and trigger capture
-      setIsCapturing(true);
-      setCaptureStatus('QR detected! Processing...');
+      setProcessStatus('Data parsed! Generating new QR...');
       setPendingPaymentData(paymentData);
+      // Use the original QR data to generate the QR image
+      setQrDataToGenerate(paymentData.originalQRData || qrData);
     } else {
+      setIsProcessing(false);
       Alert.alert(
         'Invalid QR Code',
         'This QR code is not a valid UPI payment code. Please try scanning another code.',
         [
           {
             text: 'Try Again',
-            onPress: () => setScanned(false),
+            onPress: resetState,
           },
           {
             text: 'Go Back',
@@ -177,19 +203,15 @@ export default function ScannerScreen() {
     );
   }
 
-  // Show loading screen while capturing
-  if (isCapturing) {
+  // Show processing screen with hidden QR generator
+  if (isProcessing) {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFillObject}
-        />
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color="#14B8A6" />
-            <Text style={styles.loadingText}>{captureStatus}</Text>
+            <Text style={styles.loadingText}>{processStatus}</Text>
             {pendingPaymentData && (
               <Text style={styles.loadingSubtext}>
                 {pendingPaymentData.payeeName}
@@ -197,6 +219,19 @@ export default function ScannerScreen() {
             )}
           </View>
         </View>
+        
+        {/* Hidden QR Code generator */}
+        {qrDataToGenerate && (
+          <View style={styles.hiddenQR}>
+            <QRCode
+              value={qrDataToGenerate}
+              size={300}
+              backgroundColor="white"
+              color="black"
+              getRef={(ref) => (qrRef.current = ref)}
+            />
+          </View>
+        )}
       </View>
     );
   }
@@ -205,7 +240,6 @@ export default function ScannerScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
       <CameraView
-        ref={cameraRef}
         style={StyleSheet.absoluteFillObject}
         barcodeScannerSettings={{
           barcodeTypes: ['qr'],
@@ -223,6 +257,9 @@ export default function ScannerScreen() {
           >
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
+          <View style={styles.methodBadge}>
+            <Text style={styles.methodBadgeText}>Method 2: Auto-scan + Generate</Text>
+          </View>
         </View>
 
         {/* Middle section with scan area */}
@@ -241,12 +278,15 @@ export default function ScannerScreen() {
         {/* Bottom section */}
         <View style={styles.overlaySection}>
           <Text style={styles.instructionText}>
-            Point your camera at a UPI QR code
+            Point camera at UPI QR code
           </Text>
-          {scanned && !isCapturing && (
+          <Text style={styles.subInstructionText}>
+            Auto-detects and generates clean QR
+          </Text>
+          {scanned && !isProcessing && (
             <TouchableOpacity
               style={styles.rescanButton}
-              onPress={() => setScanned(false)}
+              onPress={resetState}
             >
               <Text style={styles.rescanButtonText}>Tap to Scan Again</Text>
             </TouchableOpacity>
@@ -323,7 +363,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 30,
     height: 30,
-    borderColor: '#14B8A6',
+    borderColor: '#14B8A6', // Teal for Method 2
     borderWidth: 4,
   },
   topLeft: {
@@ -365,11 +405,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  methodBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: '#14B8A6',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+  },
+  methodBadgeText: {
+    color: '#fff',
+    fontSize: FontSizes.xs,
+    fontWeight: '600',
+  },
   instructionText: {
     color: '#fff',
     fontSize: FontSizes.md,
     textAlign: 'center',
     marginTop: Spacing.xl,
+  },
+  subInstructionText: {
+    color: '#9CA3AF',
+    fontSize: FontSizes.sm,
+    textAlign: 'center',
+    marginTop: Spacing.xs,
   },
   rescanButton: {
     marginTop: Spacing.lg,
@@ -408,6 +468,11 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     marginTop: Spacing.xs,
     textAlign: 'center',
+  },
+  hiddenQR: {
+    position: 'absolute',
+    top: -1000,
+    left: -1000,
   },
 });
 

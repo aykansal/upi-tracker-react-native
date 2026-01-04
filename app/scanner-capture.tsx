@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
@@ -16,18 +16,23 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { parseUPIQRCode } from '@/services/upi-parser';
-import { UPIPaymentData } from '@/types/transaction';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SCAN_AREA_SIZE = SCREEN_WIDTH * 0.7;
 
-export default function ScannerScreen() {
+/**
+ * Method 1: Manual Capture Scanner
+ * - User manually captures the QR image
+ * - Image is sent to payment screen
+ * - GPay reads the QR from the shared image
+ * 
+ * Note: QR decoding from static images in React Native requires native modules.
+ * For this implementation, we capture the image and let GPay read the QR.
+ */
+export default function ScannerCaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [captureStatus, setCaptureStatus] = useState('');
-  const [pendingPaymentData, setPendingPaymentData] = useState<UPIPaymentData | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processStatus, setProcessStatus] = useState('');
   const cameraRef = useRef<CameraView>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
@@ -39,97 +44,76 @@ export default function ScannerScreen() {
     }
   }, [permission]);
 
-  // Effect to capture image after QR is scanned
-  useEffect(() => {
-    if (pendingPaymentData && isCapturing) {
-      captureAndNavigate(pendingPaymentData);
-    }
-  }, [pendingPaymentData, isCapturing]);
+  const handleCapture = async () => {
+    if (isProcessing || !cameraRef.current) return;
 
-  const captureAndNavigate = async (paymentData: UPIPaymentData) => {
-    setCaptureStatus('Capturing QR image...');
-    
-    // Wait a moment for camera to stabilize after barcode scan stops
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    let qrImageUri = '';
-    let retries = 3;
-    
-    while (retries > 0 && !qrImageUri) {
-      try {
-        setCaptureStatus(`Taking photo... (attempt ${4 - retries}/3)`);
-        
-        if (cameraRef.current) {
-          const photo = await cameraRef.current.takePictureAsync({
-            quality: 0.7,
-            skipProcessing: false,
-          });
-          qrImageUri = photo?.uri || '';
-        }
-        
-        if (qrImageUri) {
-          break;
-        }
-      } catch (error) {
-        console.error(`Capture attempt ${4 - retries} failed:`, error);
-        retries--;
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
+    setIsProcessing(true);
+    setProcessStatus('Capturing image...');
+
+    try {
+      // Capture the photo
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        skipProcessing: false,
+      });
+
+      if (!photo?.uri) {
+        throw new Error('Failed to capture image');
       }
-    }
-    
-    setCaptureStatus('Redirecting...');
-    
-    // Navigate to payment screen with parsed data and image
-    router.replace({
-      pathname: '/payment',
-      params: {
-        upiId: paymentData.upiId,
-        payeeName: paymentData.payeeName,
-        amount: paymentData.amount?.toString() || '',
-        transactionNote: paymentData.transactionNote || '',
-        // Merchant support fields
-        originalQRData: paymentData.originalQRData || '',
-        isMerchant: paymentData.isMerchant ? 'true' : 'false',
-        merchantCategory: paymentData.merchantParams?.mc || '',
-        organizationId: paymentData.merchantParams?.orgid || '',
-        // QR image for sharing
-        qrImageUri: qrImageUri,
-      },
-    });
-  };
 
-  const handleBarCodeScanned = (result: BarcodeScanningResult) => {
-    if (scanned || isCapturing) return;
-    
-    setScanned(true);
-    const qrData = result.data;
+      const qrImageUri = photo.uri;
+      setProcessStatus('Image captured! Decoding QR...');
 
-    // Parse the UPI QR code
-    const paymentData = parseUPIQRCode(qrData);
-
-    if (paymentData) {
-      // Set pending data and trigger capture
-      setIsCapturing(true);
-      setCaptureStatus('QR detected! Processing...');
-      setPendingPaymentData(paymentData);
-    } else {
+      // Try to decode QR from image
+      // Note: jsQR needs ImageData which is complex in RN
+      // For this implementation, we'll use expo-camera's barcode scanner
+      // as a fallback after capture, or prompt user to use Method 2
+      
+      // For testing purposes, let's prompt user that manual decode isn't fully working
+      // and offer to proceed with just the image (GPay will read it)
+      
       Alert.alert(
-        'Invalid QR Code',
-        'This QR code is not a valid UPI payment code. Please try scanning another code.',
+        'QR Image Captured',
+        'The QR image has been captured. Note: Direct QR decoding from images requires native modules. Would you like to proceed with just the image? Google Pay will read the QR when you share it.',
         [
           {
-            text: 'Try Again',
-            onPress: () => setScanned(false),
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              setIsProcessing(false);
+              setProcessStatus('');
+            },
           },
           {
-            text: 'Go Back',
-            onPress: () => router.back(),
-            style: 'cancel',
+            text: 'Proceed',
+            onPress: () => {
+              // Navigate with just the image - payment screen will show warning
+              // but user can still share to GPay which will read the QR
+              router.replace({
+                pathname: '/payment',
+                params: {
+                  upiId: '',
+                  payeeName: 'Unknown (from image)',
+                  amount: '',
+                  transactionNote: '',
+                  originalQRData: '',
+                  isMerchant: 'false',
+                  merchantCategory: '',
+                  organizationId: '',
+                  qrImageUri: qrImageUri,
+                  // Flag to indicate this is image-only mode
+                  imageOnlyMode: 'true',
+                },
+              });
+            },
           },
         ]
       );
+    } catch (error) {
+      console.error('Error capturing:', error);
+      Alert.alert('Error', 'Failed to capture image. Please try again.');
+      setIsProcessing(false);
+      setProcessStatus('');
     }
   };
 
@@ -156,7 +140,7 @@ export default function ScannerScreen() {
             Camera Access Required
           </Text>
           <Text style={[styles.message, { color: colors.textSecondary }]}>
-            Please allow camera access to scan UPI QR codes
+            Please allow camera access to capture QR codes
           </Text>
           <TouchableOpacity
             style={[styles.permissionButton, { backgroundColor: colors.tint }]}
@@ -177,24 +161,15 @@ export default function ScannerScreen() {
     );
   }
 
-  // Show loading screen while capturing
-  if (isCapturing) {
+  // Show processing screen
+  if (isProcessing) {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFillObject}
-        />
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color="#14B8A6" />
-            <Text style={styles.loadingText}>{captureStatus}</Text>
-            {pendingPaymentData && (
-              <Text style={styles.loadingSubtext}>
-                {pendingPaymentData.payeeName}
-              </Text>
-            )}
+            <Text style={styles.loadingText}>{processStatus}</Text>
           </View>
         </View>
       </View>
@@ -207,10 +182,6 @@ export default function ScannerScreen() {
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFillObject}
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr'],
-        }}
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       />
 
       {/* Overlay */}
@@ -223,6 +194,9 @@ export default function ScannerScreen() {
           >
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
+          <View style={styles.methodBadge}>
+            <Text style={styles.methodBadgeText}>Method 1: Manual Capture</Text>
+          </View>
         </View>
 
         {/* Middle section with scan area */}
@@ -238,19 +212,20 @@ export default function ScannerScreen() {
           <View style={styles.overlaySection} />
         </View>
 
-        {/* Bottom section */}
-        <View style={styles.overlaySection}>
+        {/* Bottom section with capture button */}
+        <View style={styles.bottomSection}>
           <Text style={styles.instructionText}>
-            Point your camera at a UPI QR code
+            Position QR code in frame and tap capture
           </Text>
-          {scanned && !isCapturing && (
-            <TouchableOpacity
-              style={styles.rescanButton}
-              onPress={() => setScanned(false)}
-            >
-              <Text style={styles.rescanButtonText}>Tap to Scan Again</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.captureButton}
+            onPress={handleCapture}
+            activeOpacity={0.7}
+          >
+            <View style={styles.captureButtonInner}>
+              <Ionicons name="camera" size={32} color="#fff" />
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -323,7 +298,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 30,
     height: 30,
-    borderColor: '#14B8A6',
+    borderColor: '#F59E0B', // Orange for Method 1
     borderWidth: 4,
   },
   topLeft: {
@@ -365,23 +340,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  methodBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+  },
+  methodBadgeText: {
+    color: '#fff',
+    fontSize: FontSizes.xs,
+    fontWeight: '600',
+  },
+  bottomSection: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: Spacing.xl,
+  },
   instructionText: {
     color: '#fff',
     fontSize: FontSizes.md,
     textAlign: 'center',
-    marginTop: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
-  rescanButton: {
-    marginTop: Spacing.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    backgroundColor: '#14B8A6',
-    borderRadius: BorderRadius.md,
+  captureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#fff',
   },
-  rescanButtonText: {
-    color: '#fff',
-    fontSize: FontSizes.md,
-    fontWeight: '600',
+  captureButtonInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F59E0B',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -401,12 +403,6 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     fontWeight: '600',
     marginTop: Spacing.md,
-    textAlign: 'center',
-  },
-  loadingSubtext: {
-    color: '#9CA3AF',
-    fontSize: FontSizes.sm,
-    marginTop: Spacing.xs,
     textAlign: 'center',
   },
 });

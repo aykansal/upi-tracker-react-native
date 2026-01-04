@@ -67,8 +67,14 @@ export default function HomeScreen() {
     loadData();
   };
 
-  const handleQRScan = () => {
-    router.push('/scanner');
+  // Method 1: Manual Capture - user captures image, decode QR from image
+  const handleScanCapture = () => {
+    router.push('/scanner-capture');
+  };
+
+  // Method 2: Auto-scan + Generate QR from parsed data
+  const handleScanGenerate = () => {
+    router.push('/scanner-generate');
   };
 
   const handleManualEntry = () => {
@@ -180,7 +186,7 @@ export default function HomeScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Payment Options */}
+      {/* Payment Options - Two methods for testing */}
       <View
         style={[
           styles.paymentOptions,
@@ -189,39 +195,34 @@ export default function HomeScreen() {
           },
         ]}
       >
-        {/* QR Scan Button */}
+        {/* Method 1: Manual Capture */}
         <TouchableOpacity
           style={[
             styles.paymentButton,
-            styles.qrButton,
             {
-              backgroundColor: colors.tint,
+              backgroundColor: '#F59E0B', // Orange
             },
           ]}
-          onPress={handleQRScan}
+          onPress={handleScanCapture}
           activeOpacity={0.8}
         >
-          <Ionicons name="scan" size={24} color="#fff" />
-          <Text style={styles.paymentButtonText}>Scan QR</Text>
+          <Ionicons name="camera" size={20} color="#fff" />
+          <Text style={styles.paymentButtonText}>Capture</Text>
         </TouchableOpacity>
 
-        {/* Manual Entry Button */}
+        {/* Method 2: Auto-scan + Generate */}
         <TouchableOpacity
           style={[
             styles.paymentButton,
-            styles.manualButton,
             {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
+              backgroundColor: colors.tint, // Teal
             },
           ]}
-          onPress={handleManualEntry}
+          onPress={handleScanGenerate}
           activeOpacity={0.8}
         >
-          <Ionicons name="create-outline" size={24} color={colors.text} />
-          <Text style={[styles.paymentButtonText, { color: colors.text }]}>
-            Manual
-          </Text>
+          <Ionicons name="qr-code" size={20} color="#fff" />
+          <Text style={styles.paymentButtonText}>Generate</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -321,12 +322,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-  },
-  qrButton: {
-    // Primary button styling handled by backgroundColor
-  },
-  manualButton: {
-    borderWidth: 1,
   },
   paymentButtonText: {
     color: '#fff',
