@@ -1,23 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
+import { File, Paths } from 'expo-file-system';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryPicker } from '@/components/transactions/category-picker';
 import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
+import { modifyUPIUrl } from '@/constants/upi-config';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { saveTransaction } from '@/services/storage';
 import { CategoryType, UPIPaymentData } from '@/types/transaction';
@@ -38,6 +41,7 @@ export default function PaymentScreen() {
     // Method flags
     imageOnlyMode: string; // Method 1: only has image, no parsed data
     generatedQR: string;   // Method 2: QR was generated from data
+    amountLocked: string;  // If true, amount was in original QR and can't be changed
   }>();
 
   const colorScheme = useColorScheme();
@@ -48,11 +52,15 @@ export default function PaymentScreen() {
   const isMerchant = params.isMerchant === 'true';
   const isImageOnlyMode = params.imageOnlyMode === 'true';
   const isGeneratedQR = params.generatedQR === 'true';
+  const amountLocked = params.amountLocked === 'true';
 
   const [amount, setAmount] = useState(params.amount || '');
   const [category, setCategory] = useState<CategoryType | null>(null);
   const [reason, setReason] = useState(params.transactionNote || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
+  const [qrDataToGenerate, setQrDataToGenerate] = useState<string | null>(null);
+  const qrRef = useRef<any>(null);
 
   const paymentData: UPIPaymentData = {
     upiId: params.upiId || '',
@@ -65,24 +73,14 @@ export default function PaymentScreen() {
   const qrImageUri = params.qrImageUri || '';
   const hasQrImage = !!qrImageUri;
 
-  // For image-only mode, we only need the image and amount for tracking
-  // For normal mode, we need upiId, amount, category, and image
+  // For amount-locked mode (QR with amount), we have the QR already
+  // For unlocked mode (no amount in QR), we need to generate QR with user's amount
   const canPay = isImageOnlyMode
     ? hasQrImage && amount && parseFloat(amount) > 0 && category
-    : paymentData.upiId && amount && parseFloat(amount) > 0 && category && hasQrImage;
+    : paymentData.upiId && amount && parseFloat(amount) > 0 && category;
 
-  const handlePay = async () => {
-    if (!canPay) {
-      if (!hasQrImage) {
-        Alert.alert('QR Image Missing', 'Could not capture QR image. Please scan again.');
-      } else {
-        Alert.alert('Missing Information', 'Please fill in all required fields.');
-      }
-      return;
-    }
-
-    setIsLoading(true);
-
+  // Generate QR and share it
+  const generateAndShare = async (qrUri: string) => {
     try {
       const amountNum = parseFloat(amount);
 
@@ -98,7 +96,7 @@ export default function PaymentScreen() {
         return;
       }
 
-      // Save transaction for tracking (before sharing in case user doesn't complete payment)
+      // Save transaction for tracking
       await saveTransaction(
         paymentData,
         category!,
@@ -110,8 +108,8 @@ export default function PaymentScreen() {
       );
 
       // Share QR image to UPI app via share sheet
-      await Sharing.shareAsync(qrImageUri, {
-        mimeType: 'image/jpeg',
+      await Sharing.shareAsync(qrUri, {
+        mimeType: 'image/png',
         dialogTitle: 'Pay with UPI App',
       });
 
@@ -122,6 +120,70 @@ export default function PaymentScreen() {
       Alert.alert('Error', 'Failed to share QR image. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsGeneratingQR(false);
+    }
+  };
+
+  // Handle QR generation when we need to create QR with user's amount
+  const handleQRGenerated = async () => {
+    if (!qrRef.current) return;
+
+    qrRef.current.toDataURL(async (dataURL: string) => {
+      try {
+        const base64Data = dataURL.replace(/^data:image\/png;base64,/, "");
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const fileName = `qr_${Date.now()}.png`;
+        const file = new File(Paths.cache, fileName);
+        await file.create({ overwrite: true });
+        await file.write(bytes);
+
+        // Now share the generated QR
+        await generateAndShare(file.uri);
+      } catch {
+        Alert.alert('Error', 'Failed to generate QR image. Please try again.');
+        setIsLoading(false);
+        setIsGeneratingQR(false);
+      }
+    });
+  };
+
+  const handlePay = async () => {
+    if (!canPay) {
+      Alert.alert('Missing Information', 'Please fill in all required fields.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    if (hasQrImage) {
+      // QR already exists (amount was locked), just share it
+      await generateAndShare(qrImageUri);
+    } else {
+      // Need to generate QR with user's amount
+      const amountNum = parseFloat(amount);
+      const originalUrl = params.originalQRData || '';
+      
+      // Modify the original URL to include user's amount and reason
+      const modifiedUrl = modifyUPIUrl(
+        originalUrl,
+        amountNum,
+        reason.trim() || undefined
+      );
+      
+      setQrDataToGenerate(modifiedUrl);
+      setIsGeneratingQR(true);
+      
+      // QR generation will be handled by useEffect when qrRef is ready
+      setTimeout(() => {
+        if (qrRef.current) {
+          handleQRGenerated();
+        }
+      }, 200);
     }
   };
 
@@ -202,12 +264,12 @@ export default function PaymentScreen() {
             </View>
           </View>
 
-          {/* QR Image Warning */}
-          {!hasQrImage && (
-            <View style={[styles.warningCard, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="warning" size={20} color="#D97706" />
-              <Text style={styles.warningText}>
-                QR image not captured. Please go back and scan again.
+          {/* Amount Locked Info */}
+          {amountLocked && (
+            <View style={[styles.infoCard, { backgroundColor: colors.tint + '15' }]}>
+              <Ionicons name="lock-closed" size={18} color={colors.tint} />
+              <Text style={[styles.infoText, { color: colors.tint }]}>
+                Amount is fixed in the QR code and cannot be changed.
               </Text>
             </View>
           )}
@@ -215,14 +277,14 @@ export default function PaymentScreen() {
           {/* Amount Input */}
           <View style={styles.inputGroup}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>
-              Amount (for tracking) *
+              Amount *
             </Text>
             <View
               style={[
                 styles.amountInputContainer,
                 {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
+                  backgroundColor: amountLocked ? colors.border + '30' : colors.card,
+                  borderColor: amountLocked ? colors.tint : colors.border,
                 },
               ]}
             >
@@ -232,7 +294,7 @@ export default function PaymentScreen() {
               <TextInput
                 style={[
                   styles.amountInput, 
-                  { color: colors.text },
+                  { color: amountLocked ? colors.textSecondary : colors.text },
                 ]}
                 value={amount}
                 onChangeText={setAmount}
@@ -240,11 +302,17 @@ export default function PaymentScreen() {
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
+                editable={!amountLocked}
               />
+              {amountLocked && (
+                <Ionicons name="lock-closed" size={18} color={colors.tint} style={{ marginLeft: Spacing.sm }} />
+              )}
             </View>
-            <Text style={[styles.trackingNote, { color: colors.textSecondary }]}>
-              This amount is for tracking only. Actual payment amount is in the QR.
-            </Text>
+            {!amountLocked && (
+              <Text style={[styles.helperNote, { color: colors.textSecondary }]}>
+                Enter the amount to pay. QR will be generated with this amount.
+              </Text>
+            )}
           </View>
 
           {/* Category Picker */}
@@ -291,15 +359,17 @@ export default function PaymentScreen() {
             style={[
               styles.payButton,
               {
-                backgroundColor: canPay ? colors.tint : colors.border,
+                backgroundColor: canPay && !isLoading ? colors.tint : colors.border,
               },
             ]}
             onPress={handlePay}
-            disabled={!canPay || isLoading}
+            disabled={!canPay || isLoading || isGeneratingQR}
             activeOpacity={0.8}
           >
-            {isLoading ? (
-              <Text style={styles.payButtonText}>Opening...</Text>
+            {isLoading || isGeneratingQR ? (
+              <Text style={styles.payButtonText}>
+                {isGeneratingQR ? 'Generating QR...' : 'Opening...'}
+              </Text>
             ) : (
               <>
                 <Ionicons name="share-outline" size={20} color="#fff" />
@@ -311,6 +381,19 @@ export default function PaymentScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Hidden QR Generator for when we need to generate QR with user's amount */}
+      {isGeneratingQR && qrDataToGenerate && (
+        <View style={styles.hiddenQR}>
+          <QRCode
+            value={qrDataToGenerate}
+            size={300}
+            backgroundColor="white"
+            color="black"
+            getRef={(ref) => (qrRef.current = ref)}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -407,12 +490,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: Spacing.md,
   },
-  trackingNote: {
+  helperNote: {
     fontSize: FontSizes.xs,
     marginTop: Spacing.xs,
-    fontStyle: 'italic',
   },
-  warningCard: {
+  infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
@@ -420,10 +502,15 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
     gap: Spacing.sm,
   },
-  warningText: {
+  infoText: {
     flex: 1,
     fontSize: FontSizes.sm,
-    color: '#92400E',
+    fontWeight: '500',
+  },
+  hiddenQR: {
+    position: 'absolute',
+    top: -1000,
+    left: -1000,
   },
   textInput: {
     borderWidth: 1,

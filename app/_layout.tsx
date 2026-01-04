@@ -3,8 +3,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { ThemeProvider, useColorScheme } from '@/contexts/theme-context';
 import { Colors } from '@/constants/theme';
+import { ThemeProvider, useColorScheme } from '@/contexts/theme-context';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -49,7 +49,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
-          name="scanner"
+          name="scanner-generate"
           options={{
             presentation: 'fullScreenModal',
             animation: 'slide_from_bottom',

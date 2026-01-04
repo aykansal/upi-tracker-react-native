@@ -1,46 +1,31 @@
-import { Ionicons } from '@expo/vector-icons';
-import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
-import { File, Paths } from 'expo-file-system';
-import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
 import {
-  ActivityIndicator,
+  BarcodeScanningResult,
+  CameraView,
+  useCameraPermissions,
+} from "expo-camera";
+import { File, Paths } from "expo-file-system";
+import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React, { useEffect, useRef, useState } from "react";
+import {
   Alert,
   Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { consoleTransport, logger } from 'react-native-logs';
-import QRCode from 'react-native-qrcode-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import QRCode from "react-native-qrcode-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { parseUPIQRCode } from '@/services/upi-parser';
-import { UPIPaymentData } from '@/types/transaction';
+import { BorderRadius, Colors, FontSizes, Spacing } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { parseUPIQRCode } from "@/services/upi-parser";
+import { UPIPaymentData } from "@/types/transaction";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SCAN_AREA_SIZE = SCREEN_WIDTH * 0.7;
-
-// Create logger instance for this component
-const log = logger.createLogger({
-  transport: consoleTransport,
-  transportOptions: {
-    colors: {
-      info: 'blueBright',
-      warn: 'yellowBright',
-      error: 'redBright',
-    },
-  },
-  severity: __DEV__ ? 'debug' : 'error',
-  enabled: true,
-});
-
-// Extend logger for namespacing
-const logScanner = log.extend('ScannerGenerate');
 
 /**
  * Method 2: Auto-scan + Generate QR
@@ -52,206 +37,131 @@ const logScanner = log.extend('ScannerGenerate');
 export default function ScannerGenerateScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processStatus, setProcessStatus] = useState('');
-  const [pendingPaymentData, setPendingPaymentData] = useState<UPIPaymentData | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [pendingPaymentData, setPendingPaymentData] =
+    useState<UPIPaymentData | null>(null);
   const [qrDataToGenerate, setQrDataToGenerate] = useState<string | null>(null);
+
   const qrRef = useRef<any>(null);
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors[colorScheme ?? "dark"];
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    logScanner.debug('Component mounted');
     if (!permission?.granted) {
-      logScanner.info('Camera permission not granted, requesting...');
       requestPermission();
-    } else {
-      logScanner.debug('Camera permission already granted');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permission]);
 
-  // Generate and save QR when data is ready
   useEffect(() => {
-    logScanner.debug('Effect triggered', {
-      hasQrData: !!qrDataToGenerate,
-      hasPaymentData: !!pendingPaymentData,
-      hasQrRef: !!qrRef.current,
-      qrDataLength: qrDataToGenerate?.length || 0,
-    });
-    
-    if (qrDataToGenerate && pendingPaymentData && qrRef.current) {
-      logScanner.info('All conditions met, calling generateAndNavigate');
+    if (qrDataToGenerate && pendingPaymentData && qrRef.current && isGenerating) {
       generateAndNavigate();
     }
-  }, [qrDataToGenerate, pendingPaymentData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrDataToGenerate, pendingPaymentData, isGenerating]);
 
   const generateAndNavigate = async () => {
-    
-    if (!qrRef.current) {
-      logScanner.error('QR ref is null, cannot generate');
-      
-      return;
-    }
-    
-    if (!pendingPaymentData) {
-      logScanner.error('Payment data is null, cannot generate');
-      return;
-    }
-
-    logScanner.info('Starting QR generation process');
-    setProcessStatus('Generating QR image...');
+    if (!qrRef.current || !pendingPaymentData) return;
 
     try {
-      logScanner.debug('Calling toDataURL on QR component');
-      // Get the QR code as base64 data URL
       qrRef.current.toDataURL(async (dataURL: string) => {
         try {
-          logScanner.debug('toDataURL callback received', { dataURLLength: dataURL?.length || 0 });
-          
-          // Remove the data:image/png;base64, prefix
-          const base64Data = dataURL.replace(/^data:image\/png;base64,/, '');
-          logScanner.debug('Base64 data length after prefix removal', { length: base64Data.length });
-          
-          // Convert base64 string to Uint8Array
-          logScanner.debug('Converting base64 to Uint8Array...');
+          const base64Data = dataURL.replace(/^data:image\/png;base64,/, "");
+
           const binaryString = atob(base64Data);
           const bytes = new Uint8Array(binaryString.length);
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
-          logScanner.debug('Converted to Uint8Array', { size: bytes.length, unit: 'bytes' });
-          
-          // Create file using new API
+
           const fileName = `qr_${Date.now()}.png`;
-          logScanner.debug('Creating file', { fileName, cacheDir: Paths.cache.uri });
-          
           const file = new File(Paths.cache, fileName);
-          logScanner.debug('File instance created', { uri: file.uri });
-          
-          // Create and write the file
-          logScanner.debug('Creating file on disk...');
-          file.create({ overwrite: true });
-          logScanner.debug('File created, writing bytes...');
-          
-          file.write(bytes);
-          logScanner.info('File written successfully', { 
-            exists: file.exists, 
-            size: file.size, 
-            uri: file.uri 
-          });
 
-          setProcessStatus('Redirecting...');
+          await file.create({ overwrite: true });
+          await file.write(bytes);
 
-          const navigationParams = {
-            upiId: pendingPaymentData.upiId,
-            payeeName: pendingPaymentData.payeeName,
-            amount: pendingPaymentData.amount?.toString() || '',
-            transactionNote: pendingPaymentData.transactionNote || '',
-            originalQRData: pendingPaymentData.originalQRData || '',
-            isMerchant: pendingPaymentData.isMerchant ? 'true' : 'false',
-            merchantCategory: pendingPaymentData.merchantParams?.mc || '',
-            organizationId: pendingPaymentData.merchantParams?.orgid || '',
-            qrImageUri: file.uri,
-            generatedQR: 'true',
-          };
-          
-          logScanner.debug('Navigation params', {
-            ...navigationParams,
-            originalQRData: navigationParams.originalQRData?.substring(0, 50) + '...',
-          });
-
-          // Navigate to payment screen with parsed data and generated image
           router.replace({
-            pathname: '/payment',
-            params: navigationParams,
+            pathname: "/payment",
+            params: {
+              upiId: pendingPaymentData.upiId,
+              payeeName: pendingPaymentData.payeeName,
+              amount: pendingPaymentData.amount?.toString() || "",
+              transactionNote: pendingPaymentData.transactionNote || "",
+              originalQRData: pendingPaymentData.originalQRData || "",
+              isMerchant: pendingPaymentData.isMerchant ? "true" : "false",
+              merchantCategory: pendingPaymentData.merchantParams?.mc || "",
+              organizationId: pendingPaymentData.merchantParams?.orgid || "",
+              qrImageUri: file.uri,
+              generatedQR: "true",
+              amountLocked: "true", // Amount was in original QR, user can't change it
+            },
           });
-          
-          logScanner.info('Navigation completed');
-          
-        } catch (error) {
-          logScanner.error('Error saving QR image', error);
-          Alert.alert('Error', 'Failed to generate QR image. Please try again.');
+        } catch {
+          Alert.alert(
+            "Error",
+            "Failed to generate QR image. Please try again."
+          );
           resetState();
-          
         }
       });
-    } catch (error) {
-      logScanner.error('Error generating QR', error);
-      Alert.alert('Error', 'Failed to generate QR image. Please try again.');
+    } catch {
+      Alert.alert("Error", "Failed to generate QR image. Please try again.");
       resetState();
-      
     }
   };
 
   const resetState = () => {
-    logScanner.debug('Resetting state');
     setScanned(false);
-    setIsProcessing(false);
-    setProcessStatus('');
+    setIsGenerating(false);
     setPendingPaymentData(null);
     setQrDataToGenerate(null);
-    logScanner.debug('State reset complete');
   };
 
   const handleBarCodeScanned = (result: BarcodeScanningResult) => {
-    logScanner.debug('handleBarCodeScanned called', { scanned, isProcessing });
-    
-    if (scanned || isProcessing) {
-      logScanner.debug('Already scanned or processing, ignoring');
-      return;
-    }
-
-    logScanner.info('QR code detected!');
-    logScanner.debug('QR data', { 
-      length: result.data?.length || 0, 
-      preview: result.data?.substring(0, 100) + '...' 
-    });
+    if (scanned || isGenerating) return;
 
     setScanned(true);
-    setIsProcessing(true);
-    setProcessStatus('QR detected! Parsing data...');
-
     const qrData = result.data;
-    logScanner.debug('Parsing UPI QR code...');
-
-    // Parse the UPI QR code
     const paymentData = parseUPIQRCode(qrData);
-    logScanner.debug('Parse result', { success: !!paymentData });
 
     if (paymentData) {
-      logScanner.debug('Payment data parsed', {
-        upiId: paymentData.upiId,
-        payeeName: paymentData.payeeName,
-        amount: paymentData.amount,
-        isMerchant: paymentData.isMerchant,
-        hasOriginalQRData: !!paymentData.originalQRData,
-        originalQRDataLength: paymentData.originalQRData?.length || 0,
-      });
-      
-      setProcessStatus('Data parsed! Generating new QR...');
-      setPendingPaymentData(paymentData);
-      
-      // Use the original QR data to generate the QR image
-      const qrDataForGeneration = paymentData.originalQRData || qrData;
-      logScanner.debug('Setting QR data for generation', { length: qrDataForGeneration.length });
-      setQrDataToGenerate(qrDataForGeneration);
+      // Check if original QR has amount
+      const hasAmountInOriginal = paymentData.amount !== undefined && paymentData.amount > 0;
+
+      if (hasAmountInOriginal) {
+        // Amount is in original QR - generate QR with original data (amount locked)
+        setPendingPaymentData(paymentData);
+        const originalUrl = paymentData.originalQRData || qrData;
+        setQrDataToGenerate(originalUrl);
+        setIsGenerating(true);
+      } else {
+        // No amount in original QR - navigate to payment without QR
+        // Payment screen will generate QR with user-entered amount
+        router.replace({
+          pathname: "/payment",
+          params: {
+            upiId: paymentData.upiId,
+            payeeName: paymentData.payeeName,
+            amount: "",
+            transactionNote: paymentData.transactionNote || "",
+            originalQRData: paymentData.originalQRData || qrData,
+            isMerchant: paymentData.isMerchant ? "true" : "false",
+            merchantCategory: paymentData.merchantParams?.mc || "",
+            organizationId: paymentData.merchantParams?.orgid || "",
+            qrImageUri: "", // No QR yet - will be generated in payment screen
+            generatedQR: "false",
+            amountLocked: "false",
+          },
+        });
+      }
     } else {
-      logScanner.warn('Failed to parse QR code as UPI payment');
-      setIsProcessing(false);
       Alert.alert(
-        'Invalid QR Code',
-        'This QR code is not a valid UPI payment code. Please try scanning another code.',
+        "Invalid QR Code",
+        "This QR code is not a valid UPI payment code. Please try scanning another code.",
         [
-          {
-            text: 'Try Again',
-            onPress: resetState,
-          },
-          {
-            text: 'Go Back',
-            onPress: () => router.back(),
-            style: 'cancel',
-          },
+          { text: "Try Again", onPress: resetState },
+          { text: "Go Back", onPress: () => router.back(), style: "cancel" },
         ]
       );
     }
@@ -275,7 +185,11 @@ export default function ScannerGenerateScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.permissionContainer}>
-          <Ionicons name="camera-outline" size={64} color={colors.textSecondary} />
+          <Ionicons
+            name="camera-outline"
+            size={64}
+            color={colors.textSecondary}
+          />
           <Text style={[styles.title, { color: colors.text }]}>
             Camera Access Required
           </Text>
@@ -292,7 +206,9 @@ export default function ScannerGenerateScreen() {
             style={[styles.cancelButton, { borderColor: colors.border }]}
             onPress={handleClose}
           >
-            <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.cancelButtonText, { color: colors.textSecondary }]}
+            >
               Go Back
             </Text>
           </TouchableOpacity>
@@ -301,70 +217,39 @@ export default function ScannerGenerateScreen() {
     );
   }
 
-  // Show processing screen with hidden QR generator
-  if (isProcessing) {
-    return (
-      <View style={styles.container}>
-        <StatusBar style="light" />
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color="#14B8A6" />
-            <Text style={styles.loadingText}>{processStatus}</Text>
-            {pendingPaymentData && (
-              <Text style={styles.loadingSubtext}>
-                {pendingPaymentData.payeeName}
-              </Text>
-            )}
-          </View>
-        </View>
-        
-        {/* Hidden QR Code generator */}
-        {qrDataToGenerate && (
-          <View style={styles.hiddenQR}>
-            <QRCode
-              value={qrDataToGenerate}
-              size={300}
-              backgroundColor="white"
-              color="black"
-              getRef={(ref) => (qrRef.current = ref)}
-            />
-          </View>
-        )}
-      </View>
-    );
-  }
+  // Hidden QR generator - renders off-screen while generating
+  const hiddenQRGenerator = qrDataToGenerate && isGenerating ? (
+    <View style={styles.hiddenQR}>
+      <QRCode
+        value={qrDataToGenerate}
+        size={300}
+        backgroundColor="white"
+        color="black"
+        getRef={(ref) => (qrRef.current = ref)}
+      />
+    </View>
+  ) : null;
 
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <CameraView
         style={StyleSheet.absoluteFillObject}
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr'],
-        }}
+        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       />
+      {hiddenQRGenerator}
 
-      {/* Overlay */}
       <View style={styles.overlay}>
-        {/* Top section */}
         <View style={[styles.overlaySection, { paddingTop: insets.top }]}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={handleClose}
-          >
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
-          <View style={styles.methodBadge}>
-            <Text style={styles.methodBadgeText}>Method 2: Auto-scan + Generate</Text>
-          </View>
         </View>
 
-        {/* Middle section with scan area */}
         <View style={styles.middleSection}>
           <View style={styles.overlaySection} />
           <View style={styles.scanArea}>
-            {/* Corner markers */}
             <View style={[styles.corner, styles.topLeft]} />
             <View style={[styles.corner, styles.topRight]} />
             <View style={[styles.corner, styles.bottomLeft]} />
@@ -373,7 +258,6 @@ export default function ScannerGenerateScreen() {
           <View style={styles.overlaySection} />
         </View>
 
-        {/* Bottom section */}
         <View style={styles.overlaySection}>
           <Text style={styles.instructionText}>
             Point camera at UPI QR code
@@ -381,14 +265,6 @@ export default function ScannerGenerateScreen() {
           <Text style={styles.subInstructionText}>
             Auto-detects and generates clean QR
           </Text>
-          {scanned && !isProcessing && (
-            <TouchableOpacity
-              style={styles.rescanButton}
-              onPress={resetState}
-            >
-              <Text style={styles.rescanButtonText}>Tap to Scan Again</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
     </View>
@@ -396,26 +272,23 @@ export default function ScannerGenerateScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
+  container: { flex: 1, backgroundColor: "#000" },
   permissionContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: Spacing.xl,
   },
   title: {
     fontSize: FontSizes.xl,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
-    textAlign: 'center',
+    textAlign: "center",
   },
   message: {
     fontSize: FontSizes.md,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: Spacing.xl,
   },
   permissionButton: {
@@ -425,9 +298,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   permissionButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: FontSizes.md,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cancelButton: {
     paddingVertical: Spacing.md,
@@ -435,33 +308,24 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1,
   },
-  cancelButtonText: {
-    fontSize: FontSizes.md,
-  },
+  cancelButtonText: { fontSize: FontSizes.md },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   overlaySection: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  middleSection: {
-    flexDirection: 'row',
-    height: SCAN_AREA_SIZE,
-  },
-  scanArea: {
-    width: SCAN_AREA_SIZE,
-    height: SCAN_AREA_SIZE,
-    position: 'relative',
-  },
+  middleSection: { flexDirection: "row", height: SCAN_AREA_SIZE },
+  scanArea: { width: SCAN_AREA_SIZE, height: SCAN_AREA_SIZE },
   corner: {
-    position: 'absolute',
+    position: "absolute",
     width: 30,
     height: 30,
-    borderColor: '#14B8A6', // Teal for Method 2
+    borderColor: "#14B8A6",
     borderWidth: 4,
   },
   topLeft: {
@@ -493,84 +357,31 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 16,
     left: 16,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  methodBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: '#14B8A6',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.md,
-  },
-  methodBadgeText: {
-    color: '#fff',
-    fontSize: FontSizes.xs,
-    fontWeight: '600',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   instructionText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: FontSizes.md,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.xl,
   },
   subInstructionText: {
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     fontSize: FontSizes.sm,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: Spacing.xs,
-  },
-  rescanButton: {
-    marginTop: Spacing.lg,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    backgroundColor: '#14B8A6',
-    borderRadius: BorderRadius.md,
-  },
-  rescanButtonText: {
-    color: '#fff',
-    fontSize: FontSizes.md,
-    fontWeight: '600',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingCard: {
-    backgroundColor: '#1F2937',
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.xl,
-    alignItems: 'center',
-    minWidth: 200,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: FontSizes.md,
-    fontWeight: '600',
-    marginTop: Spacing.md,
-    textAlign: 'center',
-  },
-  loadingSubtext: {
-    color: '#9CA3AF',
-    fontSize: FontSizes.sm,
-    marginTop: Spacing.xs,
-    textAlign: 'center',
   },
   hiddenQR: {
-    position: 'absolute',
+    position: "absolute",
     top: -1000,
     left: -1000,
   },
 });
-

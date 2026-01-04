@@ -1,29 +1,29 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { format } from 'date-fns';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { format } from 'date-fns';  
+import React, { useCallback, useState } from 'react';
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
-import { Transaction, MonthlyStats } from '@/types/transaction';
 import { CategoryPieChart } from '@/components/charts/category-pie-chart';
 import { TransactionCard } from '@/components/transactions/transaction-card';
-import {
-  getRecentTransactions,
-  getMonthlyStats,
-  getCurrentMonthKey,
-  deleteTransaction,
-} from '@/services/storage';
+import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  deleteTransaction,
+  getCurrentMonthKey,
+  getMonthlyStats,
+  getRecentTransactions,
+} from '@/services/storage';
+import { MonthlyStats, Transaction } from '@/types/transaction';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -67,13 +67,7 @@ export default function HomeScreen() {
     loadData();
   };
 
-  // Method 1: Manual Capture - user captures image, decode QR from image
-  const handleScanCapture = () => {
-    router.push('/scanner-capture');
-  };
-
-  // Method 2: Auto-scan + Generate QR from parsed data
-  const handleScanGenerate = () => {
+  const handleScanQR = () => {
     router.push('/scanner-generate');
   };
 
@@ -186,7 +180,7 @@ export default function HomeScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Payment Options - Two methods for testing */}
+      {/* Payment Options */}
       <View
         style={[
           styles.paymentOptions,
@@ -195,34 +189,36 @@ export default function HomeScreen() {
           },
         ]}
       >
-        {/* Method 1: Manual Capture */}
+        {/* Scan QR */}
         <TouchableOpacity
           style={[
             styles.paymentButton,
             {
-              backgroundColor: '#F59E0B', // Orange
+              backgroundColor: colors.tint,
             },
           ]}
-          onPress={handleScanCapture}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="camera" size={20} color="#fff" />
-          <Text style={styles.paymentButtonText}>Capture</Text>
-        </TouchableOpacity>
-
-        {/* Method 2: Auto-scan + Generate */}
-        <TouchableOpacity
-          style={[
-            styles.paymentButton,
-            {
-              backgroundColor: colors.tint, // Teal
-            },
-          ]}
-          onPress={handleScanGenerate}
+          onPress={handleScanQR}
           activeOpacity={0.8}
         >
           <Ionicons name="qr-code" size={20} color="#fff" />
-          <Text style={styles.paymentButtonText}>Generate</Text>
+          <Text style={styles.paymentButtonText}>Scan QR</Text>
+        </TouchableOpacity>
+
+        {/* Manual Entry */}
+        <TouchableOpacity
+          style={[
+            styles.paymentButton,
+            {
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            },
+          ]}
+          onPress={handleManualEntry}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="create-outline" size={20} color={colors.text} />
+          <Text style={[styles.paymentButtonText, { color: colors.text }]}>Manual Entry</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -16,7 +16,7 @@ export const UPI_CONFIG = {
 export const buildUPIUrl = (params: {
   upiId: string;
   payeeName: string;
-  amount: number;
+  amount?: number;
   transactionNote?: string;
 }): string => {
   const { upiId, payeeName, amount, transactionNote } = params;
@@ -24,15 +24,64 @@ export const buildUPIUrl = (params: {
   const queryParams = new URLSearchParams({
     pa: upiId,
     pn: payeeName,
-    am: amount.toString(),
     cu: UPI_CONFIG.currency,
   });
+
+  if (amount && amount > 0) {
+    queryParams.set('am', amount.toString());
+  }
 
   if (transactionNote) {
     queryParams.set('tn', transactionNote);
   }
 
   return `upi://pay?${queryParams.toString()}`;
+};
+
+/**
+ * Modify existing UPI URL by updating/adding amount and transaction note.
+ * For merchant QR codes, preserves all merchant params but updates am/tn if provided.
+ * For P2P, rebuilds URL with new params.
+ */
+export const modifyUPIUrl = (
+  originalUrl: string,
+  amount?: number,
+  transactionNote?: string
+): string => {
+  try {
+    // Normalize URL
+    let normalizedUrl = originalUrl.trim();
+    if (normalizedUrl.toLowerCase().startsWith('upi://')) {
+      normalizedUrl = 'upi://' + normalizedUrl.substring(6);
+    } else if (normalizedUrl.toLowerCase().startsWith('upi:')) {
+      normalizedUrl = 'upi://' + normalizedUrl.substring(4);
+    } else {
+      return originalUrl; // Return original if can't parse
+    }
+
+    const url = new URL(normalizedUrl);
+    const params = url.searchParams;
+
+    // Update amount if provided
+    if (amount !== undefined && amount > 0) {
+      params.set('am', amount.toString());
+    }
+
+    // Update transaction note if provided
+    if (transactionNote !== undefined) {
+      if (transactionNote.trim()) {
+        params.set('tn', transactionNote);
+      } else {
+        params.delete('tn'); // Remove if empty
+      }
+    }
+
+    // Rebuild URL
+    return `upi://pay?${params.toString()}`;
+  } catch (error) {
+    console.error('Error modifying UPI URL:', error);
+    return originalUrl; // Return original on error
+  }
 };
 
 /**
