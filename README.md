@@ -1,4 +1,5 @@
-# UPI Tracker
+# UPI Tracker 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/aykansal/fastapi-rag-ec2)
 
 It's a privacy-first Android app I built to track my UPI expenses using the UPI URI scheme and UPI deeplinks instead of bank integrations or SMS scraping.
 

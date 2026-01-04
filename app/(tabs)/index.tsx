@@ -40,7 +40,7 @@ export default function HomeScreen() {
   const loadData = useCallback(async () => {
     try {
       const [transactions, stats] = await Promise.all([
-        getRecentTransactions(5),
+        getRecentTransactions(3),
         getMonthlyStats(currentMonthKey),
       ]);
       setRecentTransactions(transactions);
@@ -177,7 +177,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Bottom padding for FABs */}
-        <View style={{ height: 120 }} />
+        <View style={{ height: 15}} />
       </ScrollView>
 
       {/* Payment Options */}
