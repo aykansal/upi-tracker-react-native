@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { File, Paths } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
-import * as Sharing from "expo-sharing";
 import { StatusBar } from "expo-status-bar";
 import React, { useRef, useState } from "react";
 import {
@@ -19,12 +18,13 @@ import QRCode from "react-native-qrcode-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CategoryPicker } from "@/components/transactions/category-picker";
+import { UPIApp, UPIAppPicker } from "@/components/upi-app-picker";
 import { BorderRadius, Colors, FontSizes, Spacing } from "@/constants/theme";
 import { modifyUPIUrl } from "@/constants/upi-config";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { ExpoUpiAppLauncherModule } from "@/modules/expo-upi-app-launcher";
 import { saveTransaction } from "@/services/storage";
 import { CategoryType, UPIPaymentData } from "@/types/transaction";
-import { ExpoUpiAppLauncherModule } from "@/modules/expo-upi-app-launcher";
 
 export default function PaymentScreen() {
   const params = useLocalSearchParams<{
@@ -61,6 +61,8 @@ export default function PaymentScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [qrDataToGenerate, setQrDataToGenerate] = useState<string | null>(null);
+  const [showUPIPicker, setShowUPIPicker] = useState(false);
+  const [pendingQrUri, setPendingQrUri] = useState<string | null>(null);
   const qrRef = useRef<any>(null);
 
   const paymentData: UPIPaymentData = {
@@ -80,22 +82,10 @@ export default function PaymentScreen() {
     ? hasQrImage && amount && parseFloat(amount) > 0 && category
     : paymentData.upiId && amount && parseFloat(amount) > 0 && category;
 
-  // Generate QR and share it
+  // Generate QR and show picker
   const generateAndShare = async (qrUri: string) => {
     try {
       const amountNum = parseFloat(amount);
-
-      // Check if sharing is available
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert(
-          "Sharing Not Available",
-          "Sharing is not available on this device.",
-          [{ text: "OK" }]
-        );
-        setIsLoading(false);
-        return;
-      }
 
       // Save transaction for tracking
       await saveTransaction(
@@ -108,25 +98,38 @@ export default function PaymentScreen() {
         params.organizationId || undefined
       );
       
-      ExpoUpiAppLauncherModule.shareTo(
-        "com.whatsapp",
-        qrUri
-      );
-
-      // Share QR image to UPI app via share sheet
-      // await Sharing.shareAsync(qrUri, {
-      //   mimeType: "image/png",
-      //   dialogTitle: "Pay with UPI App",
-      // });
-
-      // Navigate back to home after sharing
-      router.replace("/(tabs)");
-    } catch (error) {
-      console.error("Payment error:", error);
-      Alert.alert("Error", "Failed to share QR image. Please try again.");
-    } finally {
+      // Store QR URI and show picker
+      setPendingQrUri(qrUri);
+      setShowUPIPicker(true);
       setIsLoading(false);
       setIsGeneratingQR(false);
+    } catch (error) {
+      console.error("Payment error:", error);
+      Alert.alert("Failed to prepare QR image. Please try again.");
+      setIsLoading(false);
+      setIsGeneratingQR(false);
+    }
+  };
+
+  // Handle UPI app selection
+  const handleAppSelect = (app: UPIApp) => {
+    if (!pendingQrUri) return;
+
+    try {
+      ExpoUpiAppLauncherModule.shareTo(app.packageName, pendingQrUri);
+      
+      // Navigate back to home after sharing
+      setTimeout(() => {
+        router.replace("/(tabs)");
+      }, 500);
+    } catch (error) {
+      // console.error("Error sharing to app:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Full error details:", errorMessage);
+      // if (errorMessage.includes("No Activity found to handle Intent")) {
+      //   setToastMessage(`${app.name} is not available. Try another app.`);
+      // }
+      Alert.alert('uncool!!', `${app.name} is not available. you better change it.`);
     }
   };
 
@@ -150,8 +153,9 @@ export default function PaymentScreen() {
 
         // Now share the generated QR
         await generateAndShare(file.uri);
-      } catch {
-        Alert.alert("Error", "Failed to generate QR image. Please try again.");
+      } catch (error) {
+        console.error("QR generation error:", error);
+        Alert.alert("Failed to generate QR image. Please try again.");
         setIsLoading(false);
         setIsGeneratingQR(false);
       }
@@ -425,6 +429,16 @@ export default function PaymentScreen() {
           />
         </View>
       )}
+
+      {/* UPI App Picker */}
+      <UPIAppPicker
+        visible={showUPIPicker}
+        onSelectApp={handleAppSelect}
+        onClose={() => {
+          setShowUPIPicker(false);
+          setPendingQrUri(null);
+        }}
+      />
     </View>
   );
 }

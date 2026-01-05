@@ -2,6 +2,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } fro
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+// If using Expo Router, import your CSS file in the app/_layout.tsx file
+import '../global.css';
 
 import { Colors } from '@/constants/theme';
 import { ThemeProvider, useColorScheme } from '@/contexts/theme-context';

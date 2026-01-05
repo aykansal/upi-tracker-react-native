@@ -2,6 +2,7 @@
  * UPI Configuration and Intent URLs
  */
 
+import { UPIApp } from '@/components/upi-app-picker';
 import { MERCHANT_PARAM_KEYS } from '@/services/upi-parser';
 
 export const UPI_CONFIG = {
@@ -20,7 +21,7 @@ export const buildUPIUrl = (params: {
   transactionNote?: string;
 }): string => {
   const { upiId, payeeName, amount, transactionNote } = params;
-  
+
   const queryParams = new URLSearchParams({
     pa: upiId,
     pn: payeeName,
@@ -95,7 +96,7 @@ export const modifyUPIUrl = (
 export const isMerchantQRCode = (qrData: string): boolean => {
   try {
     if (!qrData) return false;
-    
+
     // Normalize for parsing
     let normalizedData = qrData.trim();
     if (normalizedData.toLowerCase().startsWith('upi://')) {
@@ -105,9 +106,9 @@ export const isMerchantQRCode = (qrData: string): boolean => {
     } else {
       return false;
     }
-    
+
     const url = new URL(normalizedData);
-    
+
     // Check if any merchant param key exists with a non-empty value
     return MERCHANT_PARAM_KEYS.some(key => {
       const value = url.searchParams.get(key);
@@ -121,3 +122,31 @@ export const isMerchantQRCode = (qrData: string): boolean => {
     return false;
   }
 };
+
+export const UPI_APPS: UPIApp[] = [
+  {
+    packageName: 'com.google.android.apps.nbu.paisa.user',
+    name: 'Google Pay',
+    icon: require('@/assets/upi/google-pay.png'),
+  },
+  {
+    packageName: 'com.phonepe.app',
+    name: 'PhonePe',
+    icon: require('@/assets/upi/phone-pe.png'),
+  },
+  {
+    packageName: 'net.one97.paytm',
+    name: 'Paytm',
+    icon: require('@/assets/upi/paytm.png'),
+  },
+  {
+    packageName: 'in.org.npci.upiapp',
+    name: 'BHIM',
+    icon: require('@/assets/upi/bhim.png'),
+  },
+  {
+    packageName: 'in.amazon.mShop.android.shopping',
+    name: 'Amazon Pay',
+    icon: require('@/assets/upi/amazonpay.png'),
+  },
+];
