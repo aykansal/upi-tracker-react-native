@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CategoryInfo } from '@/types/transaction';
+import { DEFAULT_CATEGORIES } from '@/constants/categories';
 
 const CATEGORIES_KEY = '@upitracker_categories';
 
@@ -75,40 +76,6 @@ export const AVAILABLE_COLORS = [
   '#78716C', // Stone
 ];
 
-// Default categories that come with the app
-export const DEFAULT_CATEGORIES: CategoryInfo[] = [
-  {
-    key: 'food',
-    label: 'Food',
-    icon: 'restaurant',
-    color: '#F59E0B',
-  },
-  {
-    key: 'utility',
-    label: 'Utility',
-    icon: 'flash',
-    color: '#3B82F6',
-  },
-  {
-    key: 'college',
-    label: 'College',
-    icon: 'school',
-    color: '#8B5CF6',
-  },
-  {
-    key: 'rent',
-    label: 'Rent',
-    icon: 'home',
-    color: '#EC4899',
-  },
-  {
-    key: 'other',
-    label: 'Other',
-    icon: 'pricetag',
-    color: '#6B7280',
-  },
-];
-
 /**
  * Get all categories from storage
  * Returns default categories if none are stored
@@ -119,12 +86,12 @@ export const getCategories = async (): Promise<CategoryInfo[]> => {
     if (!data) {
       // Initialize with default categories
       await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORIES));
-      return DEFAULT_CATEGORIES;
+      return Object.values(DEFAULT_CATEGORIES);
     }
     return JSON.parse(data);
   } catch (error) {
     console.error('Error getting categories:', error);
-    return DEFAULT_CATEGORIES;
+    return Object.values(DEFAULT_CATEGORIES);
   }
 };
 
@@ -206,7 +173,7 @@ export const deleteCategory = async (key: string): Promise<boolean> => {
     
     // Ensure we always have at least 'other' category
     if (filtered.length === 0) {
-      const otherCategory = DEFAULT_CATEGORIES.find(c => c.key === 'other')!;
+      const otherCategory = Object.values(DEFAULT_CATEGORIES).find(c => c.key === 'other')!;
       filtered.push(otherCategory);
     }
     

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "UPI Tracker",
-    "slug": "upitracker",
+    "slug": "first",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -24,7 +24,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "package": "com.upitracker.app"
     },
@@ -61,9 +62,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a06efa5f-b141-4545-be62-ad2562ba0381"
+        "projectId": "f4c17ba5-2693-418f-96ad-4122d8c5241b"
       }
     },
-    "owner": "aykansal"
+    "owner": "aykansal1"
   }
 }

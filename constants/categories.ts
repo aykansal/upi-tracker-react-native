@@ -34,13 +34,7 @@ export const DEFAULT_CATEGORIES: Record<string, CategoryInfo> = {
   },
 };
 
-// Keep CATEGORIES for backwards compatibility with existing code
-export const CATEGORIES = DEFAULT_CATEGORIES;
-
 export const DEFAULT_CATEGORY_LIST: CategoryInfo[] = Object.values(DEFAULT_CATEGORIES);
-
-// Keep CATEGORY_LIST for backwards compatibility
-export const CATEGORY_LIST = DEFAULT_CATEGORY_LIST;
 
 /**
  * Get category color with fallback
