@@ -51,7 +51,8 @@
         {
           "cameraPermission": "UPI Tracker needs camera access to scan UPI QR codes for payments."
         }
-      ]
+      ],
+      "./modules/expo-upi-app-launcher/app.plugin.js"
     ],
     "experiments": {
       "typedRoutes": true,

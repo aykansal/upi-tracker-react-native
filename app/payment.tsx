@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
-import { File, Paths } from 'expo-file-system';
-import { router, useLocalSearchParams } from 'expo-router';
-import * as Sharing from 'expo-sharing';
-import { StatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { File, Paths } from "expo-file-system";
+import { router, useLocalSearchParams } from "expo-router";
+import * as Sharing from "expo-sharing";
+import { StatusBar } from "expo-status-bar";
+import React, { useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,16 +14,17 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import QRCode from "react-native-qrcode-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CategoryPicker } from '@/components/transactions/category-picker';
-import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
-import { modifyUPIUrl } from '@/constants/upi-config';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { saveTransaction } from '@/services/storage';
-import { CategoryType, UPIPaymentData } from '@/types/transaction';
+import { CategoryPicker } from "@/components/transactions/category-picker";
+import { BorderRadius, Colors, FontSizes, Spacing } from "@/constants/theme";
+import { modifyUPIUrl } from "@/constants/upi-config";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { saveTransaction } from "@/services/storage";
+import { CategoryType, UPIPaymentData } from "@/types/transaction";
+import { ExpoUpiAppLauncherModule } from "@/modules/expo-upi-app-launcher";
 
 export default function PaymentScreen() {
   const params = useLocalSearchParams<{
@@ -40,37 +41,37 @@ export default function PaymentScreen() {
     qrImageUri: string;
     // Method flags
     imageOnlyMode: string; // Method 1: only has image, no parsed data
-    generatedQR: string;   // Method 2: QR was generated from data
-    amountLocked: string;  // If true, amount was in original QR and can't be changed
+    generatedQR: string; // Method 2: QR was generated from data
+    amountLocked: string; // If true, amount was in original QR and can't be changed
   }>();
 
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors[colorScheme ?? "dark"];
   const insets = useSafeAreaInsets();
 
   // Determine mode and transaction type
-  const isMerchant = params.isMerchant === 'true';
-  const isImageOnlyMode = params.imageOnlyMode === 'true';
-  const isGeneratedQR = params.generatedQR === 'true';
-  const amountLocked = params.amountLocked === 'true';
+  const isMerchant = params.isMerchant === "true";
+  const isImageOnlyMode = params.imageOnlyMode === "true";
+  const isGeneratedQR = params.generatedQR === "true";
+  const amountLocked = params.amountLocked === "true";
 
-  const [amount, setAmount] = useState(params.amount || '');
+  const [amount, setAmount] = useState(params.amount || "");
   const [category, setCategory] = useState<CategoryType | null>(null);
-  const [reason, setReason] = useState(params.transactionNote || '');
+  const [reason, setReason] = useState(params.transactionNote || "");
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [qrDataToGenerate, setQrDataToGenerate] = useState<string | null>(null);
   const qrRef = useRef<any>(null);
 
   const paymentData: UPIPaymentData = {
-    upiId: params.upiId || '',
-    payeeName: params.payeeName || 'Unknown',
+    upiId: params.upiId || "",
+    payeeName: params.payeeName || "Unknown",
     amount: parseFloat(amount) || undefined,
     isMerchant: isMerchant,
     originalQRData: params.originalQRData || undefined,
   };
 
-  const qrImageUri = params.qrImageUri || '';
+  const qrImageUri = params.qrImageUri || "";
   const hasQrImage = !!qrImageUri;
 
   // For amount-locked mode (QR with amount), we have the QR already
@@ -88,9 +89,9 @@ export default function PaymentScreen() {
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
         Alert.alert(
-          'Sharing Not Available',
-          'Sharing is not available on this device.',
-          [{ text: 'OK' }]
+          "Sharing Not Available",
+          "Sharing is not available on this device.",
+          [{ text: "OK" }]
         );
         setIsLoading(false);
         return;
@@ -102,22 +103,27 @@ export default function PaymentScreen() {
         category!,
         reason.trim() || undefined,
         amountNum,
-        isMerchant ? 'merchant' : 'p2p',
+        isMerchant ? "merchant" : "p2p",
         params.merchantCategory || undefined,
         params.organizationId || undefined
       );
+      
+      ExpoUpiAppLauncherModule.shareTo(
+        "com.whatsapp",
+        qrUri
+      );
 
       // Share QR image to UPI app via share sheet
-      await Sharing.shareAsync(qrUri, {
-        mimeType: 'image/png',
-        dialogTitle: 'Pay with UPI App',
-      });
+      // await Sharing.shareAsync(qrUri, {
+      //   mimeType: "image/png",
+      //   dialogTitle: "Pay with UPI App",
+      // });
 
       // Navigate back to home after sharing
-      router.replace('/(tabs)');
+      router.replace("/(tabs)");
     } catch (error) {
-      console.error('Payment error:', error);
-      Alert.alert('Error', 'Failed to share QR image. Please try again.');
+      console.error("Payment error:", error);
+      Alert.alert("Error", "Failed to share QR image. Please try again.");
     } finally {
       setIsLoading(false);
       setIsGeneratingQR(false);
@@ -145,7 +151,7 @@ export default function PaymentScreen() {
         // Now share the generated QR
         await generateAndShare(file.uri);
       } catch {
-        Alert.alert('Error', 'Failed to generate QR image. Please try again.');
+        Alert.alert("Error", "Failed to generate QR image. Please try again.");
         setIsLoading(false);
         setIsGeneratingQR(false);
       }
@@ -154,7 +160,7 @@ export default function PaymentScreen() {
 
   const handlePay = async () => {
     if (!canPay) {
-      Alert.alert('Missing Information', 'Please fill in all required fields.');
+      Alert.alert("Missing Information", "Please fill in all required fields.");
       return;
     }
 
@@ -166,18 +172,18 @@ export default function PaymentScreen() {
     } else {
       // Need to generate QR with user's amount
       const amountNum = parseFloat(amount);
-      const originalUrl = params.originalQRData || '';
-      
+      const originalUrl = params.originalQRData || "";
+
       // Modify the original URL to include user's amount and reason
       const modifiedUrl = modifyUPIUrl(
         originalUrl,
         amountNum,
         reason.trim() || undefined
       );
-      
+
       setQrDataToGenerate(modifiedUrl);
       setIsGeneratingQR(true);
-      
+
       // QR generation will be handled by useEffect when qrRef is ready
       setTimeout(() => {
         if (qrRef.current) {
@@ -189,18 +195,18 @@ export default function PaymentScreen() {
 
   const handleClose = () => {
     Alert.alert(
-      'Discard Payment?',
-      'Are you sure you want to cancel this payment?',
+      "Discard Payment?",
+      "Are you sure you want to cancel this payment?",
       [
-        { text: 'No', style: 'cancel' },
-        { text: 'Yes', onPress: () => router.back(), style: 'destructive' },
+        { text: "No", style: "cancel" },
+        { text: "Yes", onPress: () => router.back(), style: "destructive" },
       ]
     );
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
 
       {/* Header */}
       <View
@@ -217,13 +223,17 @@ export default function PaymentScreen() {
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {isImageOnlyMode ? 'Image Capture Mode' : isGeneratedQR ? 'Generated QR Mode' : 'New Payment'}
+          {isImageOnlyMode
+            ? "Image Capture Mode"
+            : isGeneratedQR
+            ? "Generated QR Mode"
+            : "New Payment"}
         </Text>
         <View style={styles.headerButton} />
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -234,10 +244,10 @@ export default function PaymentScreen() {
           {/* Payee Info Card */}
           <View style={[styles.payeeCard, { backgroundColor: colors.card }]}>
             <View style={styles.payeeIconContainer}>
-              <Ionicons 
-                name={isMerchant ? "storefront" : "person-circle"} 
-                size={48} 
-                color={colors.tint} 
+              <Ionicons
+                name={isMerchant ? "storefront" : "person-circle"}
+                size={48}
+                color={colors.tint}
               />
             </View>
             <View style={styles.payeeInfo}>
@@ -254,9 +264,20 @@ export default function PaymentScreen() {
                 {paymentData.upiId}
               </Text>
               {isMerchant && (
-                <View style={[styles.merchantBadge, { backgroundColor: colors.tint + '20' }]}>
-                  <Ionicons name="shield-checkmark" size={12} color={colors.tint} />
-                  <Text style={[styles.merchantBadgeText, { color: colors.tint }]}>
+                <View
+                  style={[
+                    styles.merchantBadge,
+                    { backgroundColor: colors.tint + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name="shield-checkmark"
+                    size={12}
+                    color={colors.tint}
+                  />
+                  <Text
+                    style={[styles.merchantBadgeText, { color: colors.tint }]}
+                  >
                     Verified Merchant
                   </Text>
                 </View>
@@ -266,7 +287,9 @@ export default function PaymentScreen() {
 
           {/* Amount Locked Info */}
           {amountLocked && (
-            <View style={[styles.infoCard, { backgroundColor: colors.tint + '15' }]}>
+            <View
+              style={[styles.infoCard, { backgroundColor: colors.tint + "15" }]}
+            >
               <Ionicons name="lock-closed" size={18} color={colors.tint} />
               <Text style={[styles.infoText, { color: colors.tint }]}>
                 Amount is fixed in the QR code and cannot be changed.
@@ -283,7 +306,9 @@ export default function PaymentScreen() {
               style={[
                 styles.amountInputContainer,
                 {
-                  backgroundColor: amountLocked ? colors.border + '30' : colors.card,
+                  backgroundColor: amountLocked
+                    ? colors.border + "30"
+                    : colors.card,
                   borderColor: amountLocked ? colors.tint : colors.border,
                 },
               ]}
@@ -293,7 +318,7 @@ export default function PaymentScreen() {
               </Text>
               <TextInput
                 style={[
-                  styles.amountInput, 
+                  styles.amountInput,
                   { color: amountLocked ? colors.textSecondary : colors.text },
                 ]}
                 value={amount}
@@ -305,11 +330,18 @@ export default function PaymentScreen() {
                 editable={!amountLocked}
               />
               {amountLocked && (
-                <Ionicons name="lock-closed" size={18} color={colors.tint} style={{ marginLeft: Spacing.sm }} />
+                <Ionicons
+                  name="lock-closed"
+                  size={18}
+                  color={colors.tint}
+                  style={{ marginLeft: Spacing.sm }}
+                />
               )}
             </View>
             {!amountLocked && (
-              <Text style={[styles.helperNote, { color: colors.textSecondary }]}>
+              <Text
+                style={[styles.helperNote, { color: colors.textSecondary }]}
+              >
                 Enter the amount to pay. QR will be generated with this amount.
               </Text>
             )}
@@ -359,7 +391,8 @@ export default function PaymentScreen() {
             style={[
               styles.payButton,
               {
-                backgroundColor: canPay && !isLoading ? colors.tint : colors.border,
+                backgroundColor:
+                  canPay && !isLoading ? colors.tint : colors.border,
               },
             ]}
             onPress={handlePay}
@@ -368,14 +401,12 @@ export default function PaymentScreen() {
           >
             {isLoading || isGeneratingQR ? (
               <Text style={styles.payButtonText}>
-                {isGeneratingQR ? 'Generating QR...' : 'Opening...'}
+                {isGeneratingQR ? "Generating QR..." : "Opening..."}
               </Text>
             ) : (
               <>
                 <Ionicons name="share-outline" size={20} color="#fff" />
-                <Text style={styles.payButtonText}>
-                  Open in UPI App
-                </Text>
+                <Text style={styles.payButtonText}>Open in UPI App</Text>
               </>
             )}
           </TouchableOpacity>
@@ -403,9 +434,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.md,
     borderBottomWidth: 1,
@@ -413,12 +444,12 @@ const styles = StyleSheet.create({
   headerButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: FontSizes.lg,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   keyboardView: {
     flex: 1,
@@ -430,8 +461,8 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   payeeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.xl,
@@ -444,50 +475,50 @@ const styles = StyleSheet.create({
   },
   payeeName: {
     fontSize: FontSizes.lg,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 2,
   },
   upiId: {
     fontSize: FontSizes.sm,
   },
   merchantBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: Spacing.xs,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     gap: 4,
   },
   merchantBadgeText: {
     fontSize: FontSizes.xs,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   inputGroup: {
     marginBottom: Spacing.lg,
   },
   label: {
     fontSize: FontSizes.sm,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: Spacing.sm,
   },
   amountInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
   },
   currencySymbol: {
     fontSize: FontSizes.xxl,
-    fontWeight: '600',
+    fontWeight: "600",
     marginRight: Spacing.sm,
   },
   amountInput: {
     flex: 1,
     fontSize: FontSizes.xxl,
-    fontWeight: '600',
+    fontWeight: "600",
     paddingVertical: Spacing.md,
   },
   helperNote: {
@@ -495,8 +526,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.lg,
@@ -505,10 +536,10 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: FontSizes.sm,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   hiddenQR: {
-    position: 'absolute',
+    position: "absolute",
     top: -1000,
     left: -1000,
   },
@@ -524,16 +555,16 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
   },
   payButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     gap: Spacing.sm,
   },
   payButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: FontSizes.lg,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
