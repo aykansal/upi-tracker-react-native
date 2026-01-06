@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CategoryDonutChart, CategoryLegend } from '@/components/charts/category-donut-chart';
+import { CategoryDonutChart } from '@/components/charts/category-donut-chart';
 import { CatHeader } from '@/components/mascots/cat-illustrations';
 import { TransactionCard } from '@/components/transactions/transaction-card';
 import { BorderRadius, Colors, Fonts, FontSizes, Spacing } from '@/constants/theme';
@@ -97,7 +97,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.greetingContainer}>
             <Text style={[styles.greeting, { color: colors.text }]}>
-              Hey, {username || 'there'}
+              hey, {username || 'there'}
             </Text>
           </View>
           <View style={styles.catContainer}>
@@ -106,34 +106,27 @@ export default function HomeScreen() {
         </View>
 
         {/* Combined Monthly Total and Donut Chart */}
-        {monthlyStats && monthlyStats.total > 0 ? (
-          <View style={[styles.combinedCard, { backgroundColor: colors.card }]}>
-            {/* Chart Centered */}
-            <View style={styles.chartContainer}>
-              <CategoryDonutChart
-                categoryBreakdown={monthlyStats.categoryBreakdown}
-                total={monthlyStats.total}
-                showLegend={false}
-              />
-            </View>
-            {/* Legend Below */}
-            <View style={styles.legendContainer}>
-              <CategoryLegend
-                categoryBreakdown={monthlyStats.categoryBreakdown}
-                total={monthlyStats.total}
-              />
+        <View style={[styles.combinedCard, { backgroundColor: colors.card }]}>
+          <View style={styles.combinedHeader}>
+            <View>
+              <Text style={[styles.totalAmount, { color: colors.text }]}>
+                ₹{(monthlyStats?.total || 0).toLocaleString('en-IN', {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+              <Text style={[styles.totalSubtitle, { color: colors.textSecondary }]}>
+                This month
+              </Text>
             </View>
           </View>
-        ) : (
-          <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.totalAmount, { color: colors.text }]}>
-              ₹0
-            </Text>
-            <Text style={[styles.totalSubtitle, { color: colors.textSecondary }]}>
-              This month
-            </Text>
+          <View style={styles.chartContainer}>
+            <CategoryDonutChart
+              categoryBreakdown={monthlyStats?.categoryBreakdown || {}}
+              total={monthlyStats?.total || 0}
+            />
           </View>
-        )}
+        </View>
 
         {/* Recent Transactions */}
         <View style={styles.transactionsSection}>
@@ -250,26 +243,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   catContainer: {
-    opacity: 0.4,
-  },
-  totalCard: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.xl,
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
+    opacity: 1,
   },
   combinedCard: {
     padding: Spacing.xl,
     borderRadius: BorderRadius.xl,
     marginBottom: Spacing.xl,
   },
-  chartContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  combinedHeader: {
     marginBottom: Spacing.lg,
-  },
-  legendContainer: {
-    width: '100%',
   },
   totalAmount: {
     fontFamily: Fonts?.sans || 'regular-font',
@@ -280,6 +262,9 @@ const styles = StyleSheet.create({
   totalSubtitle: {
     fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.md,
+  },
+  chartContainer: {
+    width: '100%',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -326,8 +311,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     gap: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
   },
   primaryButton: {
     flex: 1,

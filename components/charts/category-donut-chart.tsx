@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
-import Svg, { G, Path, Circle } from "react-native-svg";
+import Svg, { G, Path } from "react-native-svg";
 
 import {
   DEFAULT_CATEGORY_LIST,
@@ -23,21 +23,19 @@ import { getCategories } from "@/services/category-storage";
 import { CategoryInfo, CategoryType } from "@/types/transaction";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const CHART_SIZE = 240; // Increased from 200
-const CHART_RADIUS = 95; // Increased from 80
-const CHART_INNER_RADIUS = 60; // Increased from 50
+const CHART_SIZE = 200;
+const CHART_RADIUS = 80;
+const CHART_INNER_RADIUS = 50; // Creates the donut hole
 const CHART_CENTER = CHART_SIZE / 2;
 
 interface CategoryDonutChartProps {
   categoryBreakdown: Record<CategoryType, number>;
   total: number;
-  showLegend?: boolean;
 }
 
 export function CategoryDonutChart({
   categoryBreakdown,
   total,
-  showLegend = true,
 }: CategoryDonutChartProps) {
   const colors = Colors.light;
   const [categories, setCategories] = useState<CategoryInfo[]>(
@@ -160,117 +158,35 @@ export function CategoryDonutChart({
       </View>
 
       {/* Custom Legend */}
-      {showLegend && (
-        <View style={styles.legend}>
-          {chartData.map((item) => {
-            const percentage = item.percentage.toFixed(0);
-            return (
-              <View key={item.name} style={styles.legendItem}>
-                <View
-                  style={[styles.legendDot, { backgroundColor: item.color }]}
-                />
-                <Text
-                  style={[styles.legendLabel, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {item.name}
-                </Text>
-                <Text style={[styles.legendValue, { color: colors.text }]}>
-                  ₹{item.amount.toLocaleString("en-IN")}
-                </Text>
-                <Text
-                  style={[
-                    styles.legendPercentage,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {percentage}%
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </View>
-  );
-}
-
-// Export legend component for separate rendering
-export function CategoryLegend({
-  categoryBreakdown,
-  total,
-}: {
-  categoryBreakdown: Record<CategoryType, number>;
-  total: number;
-}) {
-  const colors = Colors.light;
-  const [categories, setCategories] = useState<CategoryInfo[]>(
-    DEFAULT_CATEGORY_LIST
-  );
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
-  const loadCategories = async () => {
-    try {
-      const loaded = await getCategories();
-      setCategories(loaded);
-    } catch (error) {
-      console.error("Error loading categories:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const categoryRecord = categoryListToRecord(categories);
-
-  const chartData = Object.entries(categoryBreakdown)
-    .filter(([_, amount]) => amount > 0)
-    .map(([key, amount]) => {
-      const cat = categoryRecord[key] || { label: key, color: "#6B7280" };
-      return {
-        name: cat.label,
-        amount,
-        color: cat.color,
-        percentage: (amount / total) * 100,
-      };
-    });
-
-  if (isLoading || chartData.length === 0 || total === 0) {
-    return null;
-  }
-
-  return (
-    <View style={styles.legend}>
-      {chartData.map((item) => {
-        const percentage = item.percentage.toFixed(0);
-        return (
-          <View key={item.name} style={styles.legendItem}>
-            <View
-              style={[styles.legendDot, { backgroundColor: item.color }]}
-            />
-            <Text
-              style={[styles.legendLabel, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {item.name}
-            </Text>
-            <Text style={[styles.legendValue, { color: colors.text }]}>
-              ₹{item.amount.toLocaleString("en-IN")}
-            </Text>
-            <Text
-              style={[
-                styles.legendPercentage,
-                { color: colors.textSecondary },
-              ]}
-            >
-              {percentage}%
-            </Text>
-          </View>
-        );
-      })}
+      <View style={styles.legend}>
+        {chartData.map((item) => {
+          const percentage = item.percentage.toFixed(0);
+          return (
+            <View key={item.name} style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: item.color }]}
+              />
+              <Text
+                style={[styles.legendLabel, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {item.name}
+              </Text>
+              <Text style={[styles.legendValue, { color: colors.text }]}>
+                ₹{item.amount.toLocaleString("en-IN")}
+              </Text>
+              <Text
+                style={[
+                  styles.legendPercentage,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {percentage}%
+              </Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
