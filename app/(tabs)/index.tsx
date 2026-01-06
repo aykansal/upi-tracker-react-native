@@ -26,8 +26,7 @@ import {
 import { MonthlyStats, Transaction } from '@/types/transaction';
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
@@ -77,7 +76,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
 
       <ScrollView
         style={styles.scrollView}

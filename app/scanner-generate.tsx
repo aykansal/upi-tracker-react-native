@@ -43,8 +43,7 @@ export default function ScannerGenerateScreen() {
   const [qrDataToGenerate, setQrDataToGenerate] = useState<string | null>(null);
 
   const qrRef = useRef<any>(null);
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "dark"];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
   useEffect(() => {

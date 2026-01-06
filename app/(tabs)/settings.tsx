@@ -19,20 +19,13 @@ import { getCategories } from "@/services/category-storage";
 import { exportToPDF } from "@/services/pdf-export";
 import { clearAllData, getAllTransactions } from "@/services/storage";
 
-type ThemeMode = "light" | "dark" | "system";
-
 export default function SettingsScreen() {
-  const { colorScheme, themeMode, setThemeMode } = useTheme();
-  const colors = Colors[colorScheme ?? "dark"];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
   const [transactionCount, setTransactionCount] = useState(0);
   const [categoryCount, setCategoryCount] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-
-  const handleThemeChange = async (mode: ThemeMode) => {
-    await setThemeMode(mode);
-  };
 
   const loadStats = useCallback(async () => {
     try {
@@ -104,7 +97,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar style="dark" />
 
       <ScrollView
         style={styles.scrollView}
@@ -253,74 +246,6 @@ export default function SettingsScreen() {
                 color={colors.textSecondary}
               />
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Appearance Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            APPEARANCE
-          </Text>
-
-          <View style={[styles.card]}>
-            <View style={styles.themeSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === "light" ? colors.tint : "transparent",
-                    borderColor:
-                      themeMode === "light" ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange("light")}
-              >
-                <Ionicons
-                  name="sunny"
-                  size={20}
-                  color={themeMode === "light" ? "#fff" : colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === "dark" ? colors.tint : "transparent",
-                    borderColor:
-                      themeMode === "dark" ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange("dark")}
-              >
-                <Ionicons
-                  name="moon"
-                  size={20}
-                  color={themeMode === "dark" ? "#fff" : colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === "system" ? colors.tint : "transparent",
-                    borderColor:
-                      themeMode === "system" ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange("system")}
-              >
-                <Ionicons
-                  name="phone-portrait"
-                  size={20}
-                  color={themeMode === "system" ? "#fff" : colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
 

@@ -45,8 +45,7 @@ export default function PaymentScreen() {
     amountLocked: string; // If true, amount was in original QR and can't be changed
   }>();
 
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "dark"];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
   // Determine mode and transaction type
@@ -210,7 +209,7 @@ export default function PaymentScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar style="dark" />
 
       {/* Header */}
       <View

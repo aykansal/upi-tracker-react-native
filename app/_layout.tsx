@@ -1,29 +1,19 @@
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { useFonts } from 'expo-font';
 // If using Expo Router, import your CSS file in the app/_layout.tsx file
 
 import { Colors } from '@/constants/theme';
-import { ThemeProvider, useColorScheme } from '@/contexts/theme-context';
+import { ThemeProvider } from '@/contexts/theme-context';
+import { ThemedText } from '@/components/themed-text';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-// Custom dark theme matching our app design
-const CustomDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: Colors.dark.background,
-    card: Colors.dark.surface,
-    text: Colors.dark.text,
-    border: Colors.dark.border,
-    primary: Colors.dark.tint,
-  },
-};
-
+// Light theme only - warm, playful, cute-but-clean aesthetic
 const CustomLightTheme = {
   ...DefaultTheme,
   colors: {
@@ -37,11 +27,16 @@ const CustomLightTheme = {
 };
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
+  const [fontsLoaded] = useFonts({
+    'regular-font': require('@/assets/fonts/regular-font.ttf'),
+    'cute-font': require('@/assets/fonts/cute-font.ttf'),
+  });
+  
   return (
-    <NavigationThemeProvider value={isDark ? CustomDarkTheme : CustomLightTheme}>
+    <>
+    {fontsLoaded ? (
+    <NavigationThemeProvider value={CustomLightTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -76,8 +71,10 @@ function RootLayoutNav() {
           }}
         />
       </Stack>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
     </NavigationThemeProvider>
+    ) : <><ThemedText>Loading fonts...</ThemedText></>}
+    </>
   );
 }
 

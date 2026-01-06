@@ -1,54 +1,39 @@
 /**
  * UPI Tracker Theme Configuration
- * Dark mode optimized with teal accent colors
+ * Light, playful, cute-but-clean indie aesthetic
+ * Warm cream background with calm teal accents
  */
 
 import { Platform } from 'react-native';
 
-// Primary accent color - Teal
-const tintColorLight = '#0D9488';
-const tintColorDark = '#14B8A6';
+// Primary accent color - Calm teal
+const tintColor = '#229799'; // rgb(34, 151, 153)
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    textSecondary: '#687076',
-    background: '#FFFFFF',
-    surface: '#F8FAFC',
-    card: '#FFFFFF',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-    border: '#E2E8F0',
-    success: '#10B981',
-    error: '#EF4444',
-    warning: '#F59E0B',
-  },
-  dark: {
-    text: '#F5F5F5',
-    textSecondary: '#9CA3AF',
-    background: '#0A0A0A',
-    surface: '#111111',
-    card: '#1A1A1A',
-    tint: tintColorDark,
-    icon: '#9CA3AF',
-    tabIconDefault: '#6B7280',
-    tabIconSelected: tintColorDark,
-    border: '#27272A',
-    success: '#10B981',
-    error: '#EF4444',
-    warning: '#F59E0B',
+    text: '#2C2C2C', // Deep near-black with soft warmth (not pure black)
+    textSecondary: '#6B6B6B', // Muted secondary text
+    background: '#F8F6E3', // Warm cream - rgb(248, 246, 227)
+    surface: '#F5F3E0', // Slightly darker cream for surfaces
+    card: '#FCFAF5', // Slightly lighter cream for cards (elevated feel)
+    tint: tintColor, // Calm teal CTA/accent
+    icon: '#6B6B6B', // Muted icons
+    tabIconDefault: '#9A9A9A', // Subtle inactive tab icons
+    tabIconSelected: tintColor, // Teal for active tabs
+    border: '#E8E6D8', // Barely visible, warm, subtle borders
+    success: '#4A9B8E', // Muted teal-green for success
+    error: '#D67B7B', // Soft muted red for errors
+    warning: '#D4A574', // Warm muted orange for warnings
   },
 };
 
-// Category colors for consistent use across the app
+// Category colors - muted saturation, cute and friendly
 export const CategoryColors = {
-  food: '#F59E0B',
-  utility: '#3B82F6',
-  college: '#8B5CF6',
-  rent: '#EC4899',
-  other: '#6B7280',
+  food: '#D4A574', // Warm muted orange
+  utility: '#7BA3C7', // Soft muted blue
+  college: '#A88BC4', // Muted purple
+  rent: '#C88BA8', // Soft muted pink
+  other: '#9A9A9A', // Neutral muted gray
 };
 
 // Chart colors matching category theme
@@ -93,43 +78,34 @@ export const FontSizes = {
 
 export const Fonts = Platform.select({
   ios: {
-    sans: 'system-ui',
+    sans: 'regular-font', // Custom rounded friendly font
     serif: 'ui-serif',
-    rounded: 'ui-rounded',
+    rounded: 'cute-font', // Cute font for playful elements
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'regular-font', // Custom rounded friendly font
     serif: 'serif',
-    rounded: 'normal',
+    rounded: 'cute-font', // Cute font for playful elements
     mono: 'monospace',
   },
   web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    sans: "'regular-font', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
+    rounded: "'cute-font', 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
 
-// Shadow styles for cards
+// Shadow styles for cards - subtle tone-based elevation
 export const Shadows = {
   light: {
     card: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-    },
-  },
-  dark: {
-    card: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowColor: '#2C2C2C',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.03, // Very subtle shadow
+      shadowRadius: 4,
+      elevation: 1, // Minimal elevation for Android
     },
   },
 };

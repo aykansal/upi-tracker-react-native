@@ -1,66 +1,32 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useColorScheme as useSystemColorScheme } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext } from 'react';
 
-type ThemeMode = 'light' | 'dark' | 'system';
-type ColorScheme = 'light' | 'dark';
+type ColorScheme = 'light';
 
 interface ThemeContextType {
-  themeMode: ThemeMode;
+  themeMode: 'light';
   colorScheme: ColorScheme;
-  setThemeMode: (mode: ThemeMode) => Promise<void>;
+  setThemeMode: (mode: 'light') => Promise<void>;
   isLoading: boolean;
 }
-
-const THEME_STORAGE_KEY = '@upitracker_theme';
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemColorScheme = useSystemColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [isLoading, setIsLoading] = useState(true);
+  // Always use light mode - dark mode removed
+  const colorScheme: ColorScheme = 'light';
 
-  // Load saved theme preference
-  useEffect(() => {
-    loadTheme();
-  }, []);
-
-  const loadTheme = async () => {
-    try {
-      const saved = await AsyncStorage.getItem(THEME_STORAGE_KEY);
-      if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
-        setThemeModeState(saved as ThemeMode);
-      }
-    } catch (error) {
-      console.error('Error loading theme:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const setThemeMode = async (_mode: 'light') => {
+    // No-op since we only support light mode
+    return Promise.resolve();
   };
-
-  const setThemeMode = async (mode: ThemeMode) => {
-    try {
-      await AsyncStorage.setItem(THEME_STORAGE_KEY, mode);
-      setThemeModeState(mode);
-    } catch (error) {
-      console.error('Error saving theme:', error);
-    }
-  };
-
-  // Determine the actual color scheme to use
-  const colorScheme: ColorScheme =
-    themeMode === 'system'
-      ? systemColorScheme ?? 'dark'
-      : themeMode;
 
   return (
     <ThemeContext.Provider
       value={{
-        themeMode,
+        themeMode: 'light',
         colorScheme,
         setThemeMode,
-        isLoading,
+        isLoading: false, // No async loading needed
       }}
     >
       {children}
@@ -79,9 +45,9 @@ export function useTheme() {
 // For backwards compatibility with existing code
 export function useColorScheme(): ColorScheme {
   const context = useContext(ThemeContext);
-  // If used outside provider, fall back to system preference
+  // Always return light mode
   if (context === undefined) {
-    return 'dark';
+    return 'light';
   }
   return context.colorScheme;
 }
