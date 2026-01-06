@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_CATEGORY_LIST } from '@/constants/categories';
 import { CategoryInfo } from '@/types/transaction';
-import { DEFAULT_CATEGORIES } from '@/constants/categories';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CATEGORIES_KEY = '@upitracker_categories';
 
@@ -84,43 +84,43 @@ export const getCategories = async (): Promise<CategoryInfo[]> => {
   try {
     const data = await AsyncStorage.getItem(CATEGORIES_KEY);
     if (!data) {
-      // Initialize with default categories
-      await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORIES));
-      return Object.values(DEFAULT_CATEGORIES);
+      // Initialize with default categories as an array
+      await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORY_LIST));
+      return DEFAULT_CATEGORY_LIST;
     }
-    return JSON.parse(data);
+
+    return JSON.parse(data); // must be an array
   } catch (error) {
-    console.error('Error getting categories:', error);
-    return Object.values(DEFAULT_CATEGORIES);
+    console.error('[getCategories] Error getting categories:', error);
+    return DEFAULT_CATEGORY_LIST;
   }
 };
-
 /**
  * Add a new category
  */
 export const addCategory = async (category: Omit<CategoryInfo, 'key'>): Promise<CategoryInfo> => {
   try {
     const categories = await getCategories();
-    
+
     // Generate a unique key from the label
     const baseKey = category.label.toLowerCase().replace(/\s+/g, '-');
     let key = baseKey;
     let counter = 1;
-    
+
     // Ensure key is unique
     while (categories.some(c => c.key === key)) {
       key = `${baseKey}-${counter}`;
       counter++;
     }
-    
+
     const newCategory: CategoryInfo = {
       ...category,
       key,
     };
-    
+
     categories.push(newCategory);
     await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
-    
+
     return newCategory;
   } catch (error) {
     console.error('Error adding category:', error);
@@ -135,16 +135,16 @@ export const updateCategory = async (key: string, updates: Partial<Omit<Category
   try {
     const categories = await getCategories();
     const index = categories.findIndex(c => c.key === key);
-    
+
     if (index === -1) {
       return false;
     }
-    
+
     categories[index] = {
       ...categories[index],
       ...updates,
     };
-    
+
     await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
     return true;
   } catch (error) {
@@ -163,20 +163,20 @@ export const deleteCategory = async (key: string): Promise<boolean> => {
       console.warn('Cannot delete the "other" category');
       return false;
     }
-    
+
     const categories = await getCategories();
     const filtered = categories.filter(c => c.key !== key);
-    
+
     if (filtered.length === categories.length) {
       return false; // Category not found
     }
-    
+
     // Ensure we always have at least 'other' category
     if (filtered.length === 0) {
-      const otherCategory = Object.values(DEFAULT_CATEGORIES).find(c => c.key === 'other')!;
+      const otherCategory = DEFAULT_CATEGORY_LIST.find(c => c.key === 'other')!;
       filtered.push(otherCategory);
     }
-    
+
     await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(filtered));
     return true;
   } catch (error) {
@@ -203,7 +203,7 @@ export const getCategoryByKey = async (key: string): Promise<CategoryInfo | null
  */
 export const resetCategoriesToDefaults = async (): Promise<boolean> => {
   try {
-    await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORIES));
+    await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORY_LIST));
     return true;
   } catch (error) {
     console.error('Error resetting categories:', error);
