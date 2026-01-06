@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
+import { Colors, BorderRadius, FontSizes, Fonts, Spacing } from '@/constants/theme';
 import { Transaction } from '@/types/transaction';
 import { TransactionCard } from '@/components/transactions/transaction-card';
 import {
@@ -212,6 +212,7 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xxl,
     fontWeight: '700',
     marginBottom: Spacing.md,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -227,6 +228,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: Spacing.sm,
     fontSize: FontSizes.md,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   clearButton: {
     padding: Spacing.xs,
@@ -236,6 +238,7 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: FontSizes.sm,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   listContent: {
     padding: Spacing.lg,
@@ -255,10 +258,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: Spacing.md,
     marginBottom: Spacing.xs,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   emptySubtext: {
     fontSize: FontSizes.sm,
     textAlign: 'center',
+    fontFamily: Fonts?.sans || 'regular-font',
   },
 });
 

@@ -1,14 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
-import { PieChart } from 'react-native-chart-kit';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
+import { PieChart } from "react-native-chart-kit";
 
-import { CategoryType, CategoryInfo } from '@/types/transaction';
-import { DEFAULT_CATEGORY_LIST, categoryListToRecord } from '@/constants/categories';
-import { getCategories } from '@/services/category-storage';
-import { Colors, FontSizes, Spacing, BorderRadius } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { CategoryType, CategoryInfo } from "@/types/transaction";
+import {
+  DEFAULT_CATEGORY_LIST,
+  categoryListToRecord,
+} from "@/constants/categories";
+import { getCategories } from "@/services/category-storage";
+import {
+  Colors,
+  FontSizes,
+  Spacing,
+  BorderRadius,
+  Fonts,
+} from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface CategoryPieChartProps {
   categoryBreakdown: Record<CategoryType, number>;
@@ -20,8 +35,10 @@ export function CategoryPieChart({
   total,
 }: CategoryPieChartProps) {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
-  const [categories, setCategories] = useState<CategoryInfo[]>(DEFAULT_CATEGORY_LIST);
+  const colors = Colors[colorScheme ?? "dark"];
+  const [categories, setCategories] = useState<CategoryInfo[]>(
+    DEFAULT_CATEGORY_LIST
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,7 +50,7 @@ export function CategoryPieChart({
       const loaded = await getCategories();
       setCategories(loaded);
     } catch (error) {
-      console.error('Error loading categories:', error);
+      console.error("Error loading categories:", error);
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +62,7 @@ export function CategoryPieChart({
   const chartData = Object.entries(categoryBreakdown)
     .filter(([_, amount]) => amount > 0)
     .map(([key, amount]) => {
-      const cat = categoryRecord[key] || { label: key, color: '#6B7280' };
+      const cat = categoryRecord[key] || { label: key, color: "#6B7280" };
       return {
         name: cat.label,
         amount,
@@ -110,7 +127,7 @@ export function CategoryPieChart({
                 {item.name}
               </Text>
               <Text style={[styles.legendValue, { color: colors.text }]}>
-                ₹{item.amount.toLocaleString('en-IN')}
+                ₹{item.amount.toLocaleString("en-IN")}
               </Text>
               <Text
                 style={[
@@ -130,30 +147,32 @@ export function CategoryPieChart({
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyContainer: {
     padding: Spacing.xl,
     borderRadius: BorderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: 150,
   },
   emptyText: {
     fontSize: FontSizes.md,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: Spacing.xs,
+    fontFamily: Fonts?.sans || "regular-font",
   },
   emptySubtext: {
     fontSize: FontSizes.sm,
+    fontFamily: Fonts?.sans || "regular-font",
   },
   legend: {
-    width: '100%',
+    width: "100%",
     marginTop: Spacing.md,
   },
   legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
   },
   legendDot: {
@@ -168,13 +187,12 @@ const styles = StyleSheet.create({
   },
   legendValue: {
     fontSize: FontSizes.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     marginRight: Spacing.md,
   },
   legendPercentage: {
     fontSize: FontSizes.sm,
     width: 40,
-    textAlign: 'right',
+    textAlign: "right",
   },
 });
-

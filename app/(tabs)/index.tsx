@@ -15,8 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryPieChart } from '@/components/charts/category-pie-chart';
 import { TransactionCard } from '@/components/transactions/transaction-card';
-import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BorderRadius, Colors, FontSizes, Fonts, Spacing } from '@/constants/theme';
 import {
   deleteTransaction,
   getCurrentMonthKey,
@@ -242,9 +241,11 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xxl,
     fontWeight: '700',
     marginBottom: Spacing.xs,
+    fontFamily: Fonts?.rounded || 'cute-font',
   },
   monthLabel: {
     fontSize: FontSizes.md,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   totalCard: {
     padding: Spacing.xl,
@@ -255,14 +256,17 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: FontSizes.sm,
     marginBottom: Spacing.xs,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   totalAmount: {
     fontSize: FontSizes.display,
     fontWeight: '700',
     marginBottom: Spacing.xs,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   transactionCount: {
     fontSize: FontSizes.sm,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   section: {
     marginBottom: Spacing.xl,
@@ -277,10 +281,12 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.lg,
     fontWeight: '600',
     marginBottom: Spacing.md,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   seeAllButton: {
     fontSize: FontSizes.sm,
     fontWeight: '500',
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   emptyState: {
     padding: Spacing.xl,
@@ -292,10 +298,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: Spacing.md,
     marginBottom: Spacing.xs,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   emptySubtext: {
     fontSize: FontSizes.sm,
     textAlign: 'center',
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   paymentOptions: {
     position: 'absolute',
@@ -322,5 +330,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: FontSizes.md,
     fontWeight: '600',
+    fontFamily: Fonts?.sans || 'regular-font',
   },
 });

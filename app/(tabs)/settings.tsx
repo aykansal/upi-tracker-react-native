@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BorderRadius, Colors, FontSizes, Spacing } from "@/constants/theme";
+import { BorderRadius, Colors, FontSizes, Fonts, Spacing } from "@/constants/theme";
 import { useTheme } from "@/contexts/theme-context";
 import { getCategories } from "@/services/category-storage";
 import { exportToPDF } from "@/services/pdf-export";
@@ -303,6 +303,7 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xxl,
     fontWeight: "700",
     marginBottom: Spacing.xl,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   section: {
     marginBottom: Spacing.xl,
@@ -313,6 +314,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: Spacing.sm,
     marginLeft: Spacing.xs,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   card: {
     borderRadius: BorderRadius.lg,
@@ -363,9 +365,11 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     fontWeight: "500",
     marginBottom: 2,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   menuItemDescription: {
     fontSize: FontSizes.sm,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   divider: {
     height: 1,
@@ -378,9 +382,11 @@ const styles = StyleSheet.create({
   },
   aboutLabel: {
     fontSize: FontSizes.md,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   aboutValue: {
     fontSize: FontSizes.md,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   infoCard: {
     flexDirection: "row",
@@ -396,5 +402,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSizes.sm,
     lineHeight: 20,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
 });

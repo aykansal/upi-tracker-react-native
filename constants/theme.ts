@@ -109,3 +109,16 @@ export const Shadows = {
     },
   },
 };
+
+// Text style helpers with custom fonts applied
+export const TextStyles = {
+  default: {
+    fontFamily: Fonts?.sans || 'regular-font',
+  },
+  rounded: {
+    fontFamily: Fonts?.rounded || 'cute-font',
+  },
+  mono: {
+    fontFamily: Fonts?.mono || 'monospace',
+  },
+};
