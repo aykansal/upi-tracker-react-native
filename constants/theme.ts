@@ -7,7 +7,7 @@
 import { Platform } from 'react-native';
 
 // Primary accent color - Calm teal
-const tintColor = '#229799'; // rgb(34, 151, 153)
+const tintColor = 'rgb(34, 151, 153)';
 
 export const Colors = {
   light: {
