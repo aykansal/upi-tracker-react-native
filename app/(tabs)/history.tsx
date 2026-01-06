@@ -11,18 +11,18 @@ import {
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import { Colors, BorderRadius, FontSizes, Fonts, Spacing } from '@/constants/theme';
+import { Colors, BorderRadius, FontSizes, Spacing, TextStyles } from '@/constants/theme';
 import { Transaction } from '@/types/transaction';
 import { TransactionCard } from '@/components/transactions/transaction-card';
+import { CatEmptyState } from '@/components/mascots/cat-illustrations';
 import {
   getAllTransactions,
   searchTransactions,
   deleteTransaction,
 } from '@/services/storage';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function HistoryScreen() {
   const colors = Colors.light;
@@ -92,42 +92,36 @@ export default function HistoryScreen() {
     />
   );
 
+  const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+
   const renderEmptyState = () => (
-    <View style={[styles.emptyState, { backgroundColor: colors.card }]}>
-      <Ionicons
-        name={searchQuery ? 'search-outline' : 'receipt-outline'}
-        size={48}
-        color={colors.textSecondary}
-      />
+    <View style={styles.emptyContainer}>
+      <CatEmptyState />
       <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-        {searchQuery ? 'No matching transactions' : 'No transactions yet'}
+        {searchQuery ? "Nothing found" : "No transactions yet"}
       </Text>
       <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
         {searchQuery
-          ? 'Try a different search term'
+          ? 'Try a different search'
           : 'Your payment history will appear here'}
       </Text>
     </View>
   );
 
-  const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
-
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar style="dark" />
 
-      {/* Header */}
+      {/* Header with Search */}
       <View
         style={[
           styles.header,
           {
-            paddingTop: insets.top + Spacing.md,
-            backgroundColor: colors.surface,
+            paddingTop: Spacing.md,
+            paddingBottom: Spacing.md,
           },
         ]}
       >
-        <Text style={[styles.title, { color: colors.text }]}>History</Text>
-
         {/* Search Bar */}
         <View
           style={[
@@ -146,7 +140,7 @@ export default function HistoryScreen() {
           />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search by reason, payee, category..."
+            placeholder="Search transactions..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={handleSearch}
@@ -164,14 +158,14 @@ export default function HistoryScreen() {
           )}
         </View>
 
-        {/* Summary */}
+        {/* Summary Row */}
         {transactions.length > 0 && (
           <View style={styles.summary}>
             <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-              {transactions.length} transaction{transactions.length !== 1 ? 's' : ''} •{' '}
-              <Text style={{ color: colors.text, fontWeight: '600' }}>
-                ₹{totalAmount.toLocaleString('en-IN')}
-              </Text>
+              {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+            </Text>
+            <Text style={[styles.summaryAmount, { color: colors.text }]}>
+              ₹{totalAmount.toLocaleString('en-IN')}
             </Text>
           </View>
         )}
@@ -196,7 +190,7 @@ export default function HistoryScreen() {
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -206,20 +200,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  title: {
-    fontSize: FontSizes.xxl,
-    fontWeight: '700',
-    marginBottom: Spacing.md,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
   },
   searchIcon: {
     marginRight: Spacing.sm,
@@ -228,17 +216,23 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: Spacing.sm,
     fontSize: FontSizes.md,
-    fontFamily: Fonts?.sans || 'regular-font',
+    ...TextStyles.default,
   },
   clearButton: {
     padding: Spacing.xs,
   },
   summary: {
-    marginTop: Spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   summaryText: {
+    ...TextStyles.default,
     fontSize: FontSizes.sm,
-    fontFamily: Fonts?.sans || 'regular-font',
+  },
+  summaryAmount: {
+    ...TextStyles.amount,
+    fontSize: FontSizes.lg,
   },
   listContent: {
     padding: Spacing.lg,
@@ -248,22 +242,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
   },
-  emptyState: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.lg,
+  emptyContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xxl,
   },
   emptyText: {
-    fontSize: FontSizes.md,
-    fontWeight: '500',
-    marginTop: Spacing.md,
+    ...TextStyles.defaultSemiBold,
+    marginTop: Spacing.lg,
     marginBottom: Spacing.xs,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
   emptySubtext: {
+    ...TextStyles.default,
     fontSize: FontSizes.sm,
     textAlign: 'center',
-    fontFamily: Fonts?.sans || 'regular-font',
   },
 });
-

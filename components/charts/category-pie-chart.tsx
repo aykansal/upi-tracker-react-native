@@ -1,28 +1,26 @@
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
   ActivityIndicator,
+  Dimensions,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { PieChart } from "react-native-chart-kit";
 
-import { CategoryType, CategoryInfo } from "@/types/transaction";
 import {
   DEFAULT_CATEGORY_LIST,
   categoryListToRecord,
 } from "@/constants/categories";
-import { getCategories } from "@/services/category-storage";
 import {
+  BorderRadius,
   Colors,
   FontSizes,
-  Spacing,
-  BorderRadius,
   Fonts,
+  Spacing,
 } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-
+import { getCategories } from "@/services/category-storage";
+import { CategoryInfo, CategoryType } from "@/types/transaction";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface CategoryPieChartProps {
@@ -34,8 +32,7 @@ export function CategoryPieChart({
   categoryBreakdown,
   total,
 }: CategoryPieChartProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "dark"];
+  const colors = Colors.light;
   const [categories, setCategories] = useState<CategoryInfo[]>(
     DEFAULT_CATEGORY_LIST
   );

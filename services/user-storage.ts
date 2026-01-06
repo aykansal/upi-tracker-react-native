@@ -76,3 +76,15 @@ export const completeOnboardingWithProfile = async (
   }
 };
 
+/**
+ * Update user profile without affecting onboarding status
+ */
+export const updateUserProfile = async (profile: UserProfile): Promise<void> => {
+  try {
+    await saveUserProfile(profile);
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
+

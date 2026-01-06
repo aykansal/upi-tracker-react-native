@@ -100,6 +100,12 @@ export default function RootLayout() {
               animation: "slide_from_right",
             }}
           />
+          <Stack.Screen
+            name="settings/edit-profile"
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </NavigationThemeProvider>

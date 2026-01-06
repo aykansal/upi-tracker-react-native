@@ -12,7 +12,6 @@ import { Transaction, CategoryInfo } from '@/types/transaction';
 import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { getCategories, AVAILABLE_ICONS } from '@/services/category-storage';
 import { Colors, BorderRadius, FontSizes, Fonts, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -25,8 +24,7 @@ export function TransactionCard({
   onDelete,
   showDeleteButton = true,
 }: TransactionCardProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors.light;
   const [categoryInfo, setCategoryInfo] = useState<CategoryInfo>(
     DEFAULT_CATEGORIES[transaction.category] || DEFAULT_CATEGORIES.other
   );

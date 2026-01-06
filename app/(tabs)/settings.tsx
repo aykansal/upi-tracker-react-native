@@ -4,31 +4,48 @@ import { router, useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useState } from "react";
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { BorderRadius, Colors, FontSizes, Fonts, Spacing } from "@/constants/theme";
-import { useTheme } from "@/contexts/theme-context";
+import {
+  BorderRadius,
+  Colors,
+  FontSizes,
+  Spacing,
+  TextStyles,
+} from "@/constants/theme";
+import { CatHeader } from "@/components/mascots/cat-illustrations";
 import { getCategories } from "@/services/category-storage";
 import { exportToPDF } from "@/services/pdf-export";
 import { clearAllData, getAllTransactions } from "@/services/storage";
+import { getUserProfile } from "@/services/user-storage";
+import { getGitCommitHash } from "@/utils/git-version";
 
 export default function SettingsScreen() {
   const colors = Colors.light;
-  const insets = useSafeAreaInsets();
 
+  const [username, setUsername] = useState<string>("");
+  const [avatarId, setAvatarId] = useState<string>("");
   const [transactionCount, setTransactionCount] = useState(0);
   const [categoryCount, setCategoryCount] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
 
-  const loadStats = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
+      // Load user profile
+      const profile = await getUserProfile();
+      if (profile) {
+        setUsername(profile.name);
+        setAvatarId(profile.avatarId);
+      }
+
       const [transactions, categories] = await Promise.all([
         getAllTransactions(),
         getCategories(),
@@ -42,9 +59,13 @@ export default function SettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadStats();
-    }, [loadStats])
+      loadData();
+    }, [loadData])
   );
+
+  const handleEditProfile = () => {
+    router.push("/settings/edit-profile" as any);
+  };
 
   const handleClearData = () => {
     if (transactionCount === 0) {
@@ -93,22 +114,60 @@ export default function SettingsScreen() {
     }
   };
 
-  const appVersion = Constants.expoConfig?.version || "1.0.0";
+  const handleOpenGitHub = () => {
+    Linking.openURL("https://github.com/aykansal");
+  };
+
+  const appVersion = Constants.expoConfig?.version || "2.0.0";
+  const commitHash = getGitCommitHash();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top"]}
+    >
       <StatusBar style="dark" />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + Spacing.md },
+          { paddingTop: Spacing.lg },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+        {/* Profile Card */}
+        <View style={[styles.profileCard, { backgroundColor: colors.card }]}>
+          <TouchableOpacity
+            style={styles.profileContent}
+            onPress={handleEditProfile}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.avatarContainer,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <Text style={styles.avatarText}>{avatarId || "🐱"}</Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: colors.text }]}>
+                {username || "User"}
+              </Text>
+              <Text
+                style={[styles.profileSubtext, { color: colors.textSecondary }]}
+              >
+                Tap to edit your profile
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
 
         {/* Categories Section */}
         <View style={styles.section}>
@@ -117,7 +176,6 @@ export default function SettingsScreen() {
           </Text>
 
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            {/* Manage Categories */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => router.push("/category-manager")}
@@ -266,6 +324,19 @@ export default function SettingsScreen() {
                 {appVersion}
               </Text>
             </View>
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.aboutItem}>
+              <Text style={[styles.aboutLabel, { color: colors.text }]}>
+                Commit Hash
+              </Text>
+              <Text
+                style={[styles.aboutValue, { color: colors.textSecondary }]}
+              >
+                {commitHash}
+              </Text>
+            </View>
 
             <View
               style={[styles.divider, { backgroundColor: colors.border }]}
@@ -283,8 +354,26 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+
+        {/* Built by Love Footer */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.builtByContainer}
+            onPress={handleOpenGitHub}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.builtByText, { color: colors.textSecondary }]}>
+              Built with{" "}
+              <Ionicons name="heart" size={14} color={colors.error} />
+              by{" "}
+              <Text style={[styles.githubLink, { color: colors.tint }]}>
+                aykansal
+              </Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -299,14 +388,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xl,
   },
-  title: {
-    fontSize: FontSizes.xxl,
-    fontWeight: "700",
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.xl,
-    fontFamily: Fonts?.sans || 'regular-font',
+  },
+  title: {
+    ...TextStyles.default,
+    fontSize: FontSizes.xxl,
+  },
+  catContainer: {
+    opacity: 0.4,
+  },
+  profileCard: {
+    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing.xl,
+    overflow: "hidden",
+  },
+  profileContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  avatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.full,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.md,
+  },
+  avatarText: {
+    fontSize: FontSizes.xxl,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    ...TextStyles.default,
+    fontSize: FontSizes.lg,
+    marginBottom: Spacing.xs,
+  },
+  profileSubtext: {
+    ...TextStyles.default,
+    fontSize: FontSizes.sm,
   },
   section: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.sm,
   },
   sectionTitle: {
     fontSize: FontSizes.xs,
@@ -314,30 +443,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: Spacing.sm,
     marginLeft: Spacing.xs,
-    fontFamily: Fonts?.sans || 'regular-font',
+    ...TextStyles.default,
   },
   card: {
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
-  },
-  themeSelector: {
-    flexDirection: "row",
-    padding: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  themeOption: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    gap: Spacing.xs,
-  },
-  themeOptionText: {
-    fontSize: FontSizes.sm,
-    fontWeight: "500",
   },
   menuItem: {
     flexDirection: "row",
@@ -362,17 +472,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuItemLabel: {
+    ...TextStyles.default,
     fontSize: FontSizes.md,
-    fontWeight: "500",
     marginBottom: 2,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
   menuItemDescription: {
+    ...TextStyles.default,
     fontSize: FontSizes.sm,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
   divider: {
     height: 1,
+    marginHorizontal: Spacing.md,
   },
   aboutItem: {
     flexDirection: "row",
@@ -381,27 +491,34 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   aboutLabel: {
+    ...TextStyles.default,
     fontSize: FontSizes.md,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
   aboutValue: {
+    ...TextStyles.default,
     fontSize: FontSizes.md,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
-  infoCard: {
+  footer: {
+    alignItems: "center",
+    marginTop: 12,
+    // marginBottom: Spacing.sm,
+  },
+  builtByContainer: {
     flexDirection: "row",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.lg,
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
-  infoIcon: {
-    marginRight: Spacing.md,
-    marginTop: 2,
-  },
-  infoText: {
-    flex: 1,
+  builtByText: {
+    ...TextStyles.default,
     fontSize: FontSizes.sm,
-    lineHeight: 20,
-    fontFamily: Fonts?.sans || 'regular-font',
+  },
+  githubLink: {
+    ...TextStyles.default,
+  },
+  commitHash: {
+    ...TextStyles.default,
+    fontSize: FontSizes.xs,
+    fontFamily: "monospace",
   },
 });

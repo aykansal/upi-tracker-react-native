@@ -1,7 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
 import { router, useFocusEffect } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import {
   RefreshControl,
@@ -11,32 +9,40 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CategoryPieChart } from '@/components/charts/category-pie-chart';
+import { CategoryDonutChart, CategoryLegend } from '@/components/charts/category-donut-chart';
+import { CatHeader } from '@/components/mascots/cat-illustrations';
 import { TransactionCard } from '@/components/transactions/transaction-card';
-import { BorderRadius, Colors, FontSizes, Fonts, Spacing } from '@/constants/theme';
+import { BorderRadius, Colors, Fonts, FontSizes, Spacing } from '@/constants/theme';
 import {
   deleteTransaction,
   getCurrentMonthKey,
   getMonthlyStats,
   getRecentTransactions,
 } from '@/services/storage';
+import { getUserProfile } from '@/services/user-storage';
 import { MonthlyStats, Transaction } from '@/types/transaction';
 
 export default function HomeScreen() {
   const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
+  const [username, setUsername] = useState<string>('');
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const currentMonthKey = getCurrentMonthKey();
-  const currentMonthLabel = format(new Date(), 'MMMM yyyy');
 
   const loadData = useCallback(async () => {
     try {
+      // Load username from AsyncStorage
+      const profile = await getUserProfile();
+      if (profile) {
+        setUsername(profile.name);
+      }
+
       const [transactions, stats] = await Promise.all([
         getRecentTransactions(3),
         getMonthlyStats(currentMonthKey),
@@ -74,15 +80,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style="dark" />
-
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + Spacing.md },
-        ]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -92,47 +93,50 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with greeting and cat */}
         <View style={styles.header}>
-          <Text style={[styles.appName, { color: colors.tint }]}>
-            UPI Tracker
-          </Text>
-          <Text style={[styles.monthLabel, { color: colors.textSecondary }]}>
-            {currentMonthLabel}
-          </Text>
+          <View style={styles.greetingContainer}>
+            <Text style={[styles.greeting, { color: colors.text }]}>
+              Hey, {username || 'there'}
+            </Text>
+          </View>
+          <View style={styles.catContainer}>
+            <CatHeader />
+          </View>
         </View>
 
-        {/* Monthly Total Card */}
-        <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
-            Total Spent This Month
-          </Text>
-          <Text style={[styles.totalAmount, { color: colors.text }]}>
-            ₹{(monthlyStats?.total || 0).toLocaleString('en-IN', {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 2,
-            })}
-          </Text>
-          <Text style={[styles.transactionCount, { color: colors.textSecondary }]}>
-            {monthlyStats?.transactionCount || 0} transactions
-          </Text>
-        </View>
-
-        {/* Category Breakdown */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Spending by Category
-          </Text>
-          {monthlyStats && (
-            <CategoryPieChart
-              categoryBreakdown={monthlyStats.categoryBreakdown}
-              total={monthlyStats.total}
-            />
-          )}
-        </View>
+        {/* Combined Monthly Total and Donut Chart */}
+        {monthlyStats && monthlyStats.total > 0 ? (
+          <View style={[styles.combinedCard, { backgroundColor: colors.card }]}>
+            {/* Chart Centered */}
+            <View style={styles.chartContainer}>
+              <CategoryDonutChart
+                categoryBreakdown={monthlyStats.categoryBreakdown}
+                total={monthlyStats.total}
+                showLegend={false}
+              />
+            </View>
+            {/* Legend Below */}
+            <View style={styles.legendContainer}>
+              <CategoryLegend
+                categoryBreakdown={monthlyStats.categoryBreakdown}
+                total={monthlyStats.total}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
+            <Text style={[styles.totalAmount, { color: colors.text }]}>
+              ₹0
+            </Text>
+            <Text style={[styles.totalSubtitle, { color: colors.textSecondary }]}>
+              This month
+            </Text>
+          </View>
+        )}
 
         {/* Recent Transactions */}
-        <View style={styles.section}>
+        <View style={styles.transactionsSection}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Recent Transactions
@@ -174,41 +178,36 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Bottom padding for FABs */}
-        <View style={{ height: 15}} />
+        {/* Bottom padding for fixed actions */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Payment Options */}
+      {/* Fixed Bottom Actions - Above Tab Bar */}
       <View
         style={[
-          styles.paymentOptions,
+          styles.bottomActions,
           {
-            bottom: insets.bottom + Spacing.md,
+            paddingBottom: insets.bottom + Spacing.md,
+            // backgroundColor: colors.background,
           },
         ]}
       >
-        {/* Scan QR */}
+        {/* Primary: Scan QR */}
         <TouchableOpacity
-          style={[
-            styles.paymentButton,
-            {
-              backgroundColor: colors.tint,
-            },
-          ]}
+          style={[styles.primaryButton, { backgroundColor: colors.tint }]}
           onPress={handleScanQR}
           activeOpacity={0.8}
         >
-          <Ionicons name="qr-code" size={20} color="#fff" />
-          <Text style={styles.paymentButtonText}>Scan QR</Text>
+          <Ionicons name="qr-code" size={20} color="#FFFFFF" />
+          <Text style={styles.primaryButtonText}>Scan QR</Text>
         </TouchableOpacity>
 
-        {/* Manual Entry */}
+        {/* Secondary: Manual Entry */}
         <TouchableOpacity
           style={[
-            styles.paymentButton,
+            styles.secondaryButton,
             {
               backgroundColor: colors.card,
-              borderWidth: 1,
               borderColor: colors.border,
             },
           ]}
@@ -216,10 +215,12 @@ export default function HomeScreen() {
           activeOpacity={0.8}
         >
           <Ionicons name="create-outline" size={20} color={colors.text} />
-          <Text style={[styles.paymentButtonText, { color: colors.text }]}>Manual Entry</Text>
+          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+            Manual Entry
+          </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -232,20 +233,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xl,
+    paddingTop: Spacing.lg,
   },
   header: {
-    marginBottom: Spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
   },
-  appName: {
-    fontSize: FontSizes.xxl,
-    fontWeight: '700',
-    marginBottom: Spacing.xs,
+  greetingContainer: {
+    flex: 1,
+  },
+  greeting: {
     fontFamily: Fonts?.rounded || 'cute-font',
+    fontSize: FontSizes.xxl,
+    fontWeight: 'bold',
   },
-  monthLabel: {
-    fontSize: FontSizes.md,
-    fontFamily: Fonts?.sans || 'regular-font',
+  catContainer: {
+    opacity: 0.4,
   },
   totalCard: {
     padding: Spacing.xl,
@@ -253,23 +258,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
-  totalLabel: {
-    fontSize: FontSizes.sm,
-    marginBottom: Spacing.xs,
-    fontFamily: Fonts?.sans || 'regular-font',
+  combinedCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing.xl,
+  },
+  chartContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  legendContainer: {
+    width: '100%',
   },
   totalAmount: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.display,
     fontWeight: '700',
     marginBottom: Spacing.xs,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
-  transactionCount: {
-    fontSize: FontSizes.sm,
+  totalSubtitle: {
     fontFamily: Fonts?.sans || 'regular-font',
-  },
-  section: {
-    marginBottom: Spacing.xl,
+    fontSize: FontSizes.md,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -278,15 +288,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   sectionTitle: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.lg,
     fontWeight: '600',
-    marginBottom: Spacing.md,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
   seeAllButton: {
-    fontSize: FontSizes.sm,
-    fontWeight: '500',
     fontFamily: Fonts?.sans || 'regular-font',
+    fontSize: FontSizes.sm,
+    fontWeight: '600',
+  },
+  transactionsSection: {
+    marginBottom: Spacing.xl,
   },
   emptyState: {
     padding: Spacing.xl,
@@ -294,42 +306,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.md,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: Spacing.md,
     marginBottom: Spacing.xs,
-    fontFamily: Fonts?.sans || 'regular-font',
   },
   emptySubtext: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.sm,
     textAlign: 'center',
-    fontFamily: Fonts?.sans || 'regular-font',
   },
-  paymentOptions: {
+  bottomActions: {
     position: 'absolute',
-    left: Spacing.lg,
-    right: Spacing.lg,
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
     gap: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
   },
-  paymentButton: {
+  primaryButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
     gap: Spacing.sm,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
-  paymentButtonText: {
-    color: '#fff',
+  primaryButtonText: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.md,
     fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  secondaryButtonText: {
     fontFamily: Fonts?.sans || 'regular-font',
+    fontSize: FontSizes.md,
+    fontWeight: '600',
   },
 });
