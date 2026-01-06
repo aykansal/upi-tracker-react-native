@@ -67,6 +67,12 @@ export default function RootLayout() {
               animation: "fade",
             }}
           />
+          <Stack.Screen
+            name="onboarding/profile-setup"
+            options={{
+              animation: "slide_from_right",
+            }}
+          />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="scanner-generate"
