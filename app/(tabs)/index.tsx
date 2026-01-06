@@ -97,7 +97,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.greetingContainer}>
             <Text style={[styles.greeting, { color: colors.text }]}>
-              hey, {username || 'there'}
+              hey, {username.toLowerCase() || 'there'}
             </Text>
           </View>
           <View style={styles.catContainer}>
