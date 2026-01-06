@@ -1,21 +1,36 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Ionicons } from '@expo/vector-icons';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { Colors } from '@/constants/theme';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import React from "react";
+import { HapticTab } from "@/components/haptic-tab";
+import { Colors } from "@/constants/theme";
 
 export default function TabLayout() {
-  const colors = Colors.light;
+
+  // Block access to tabs if onboarding not completed
+  // useEffect(() => {
+  //   const checkAccess = async () => {
+  //     try {
+  //       const completed = await isOnboardingComplete();
+  //       if (!completed) {
+  //         router.replace('/onboarding' as any);
+  //       }
+  //     } catch (error) {
+  //       console.error('Error checking onboarding in tabs:', error);
+  //       router.replace('/onboarding' as any);
+  //     }
+  //   };
+
+  //   checkAccess();
+  // }, [router]);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarActiveTintColor: Colors.light.tint,
+        tabBarInactiveTintColor: Colors.light.tabIconDefault,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: Colors.light.surface,
+          borderTopColor: Colors.light.border,
           borderTopWidth: 1,
           paddingTop: 8,
           paddingBottom: 8,
@@ -23,15 +38,16 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500',
+          fontWeight: "500",
         },
         headerShown: false,
         tabBarButton: HapticTab,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: "Home",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -40,7 +56,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'History',
+          title: "History",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time" size={size} color={color} />
           ),
@@ -49,7 +65,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: "Settings",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),

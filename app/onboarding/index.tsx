@@ -73,7 +73,7 @@ function CatMascot() {
 }
 
 // Simple avatar options - numbered 1-5
-const AVATAR_OPTIONS = ['1', '2', '3', '4', '5'];
+const AVATAR_OPTIONS = ['🐱', '🐶', '🐭', '🐹', '🐰'];
 
 export default function WelcomeScreen() {
   const colors = Colors.light;
@@ -141,7 +141,7 @@ export default function WelcomeScreen() {
 
         {/* Name input */}
         <View style={styles.inputSection}>
-          <Text style={[styles.label, { color: colors.text }]}>What's your name?</Text>
+          <Text style={[styles.label, { color: colors.text }]}>What should we call you?</Text>
           <TextInput
             style={[
               styles.input,
