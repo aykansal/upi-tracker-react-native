@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xs,
   },
   chartSection: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   chartHeader: {
     flexDirection: "row",
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
   },
   summaryText: {
     fontSize: FontSizes.sm,

@@ -128,25 +128,25 @@ export const UPI_APPS: UPIApp[] = [
     packageName: 'com.google.android.apps.nbu.paisa.user',
     name: 'Google Pay',
     icon: require('@/assets/upi/google-pay.png'),
-  },
-  {
-    packageName: 'com.phonepe.app',
-    name: 'PhonePe',
-    icon: require('@/assets/upi/phone-pe.png'),
-  },
-  {
-    packageName: 'net.one97.paytm',
-    name: 'Paytm',
-    icon: require('@/assets/upi/paytm.png'),
-  },
-  {
-    packageName: 'in.org.npci.upiapp',
-    name: 'BHIM',
-    icon: require('@/assets/upi/bhim.png'),
-  },
-  {
-    packageName: 'in.amazon.mShop.android.shopping',
-    name: 'Amazon Pay',
-    icon: require('@/assets/upi/amazonpay.png'),
-  },
+  }
+  // ,{
+  //   packageName: 'com.phonepe.app',
+  //   name: 'PhonePe',
+  //   icon: require('@/assets/upi/phone-pe.png'),
+  // },
+  // {
+  //   packageName: 'net.one97.paytm',
+  //   name: 'Paytm',
+  //   icon: require('@/assets/upi/paytm.png'),
+  // },
+  // {
+  //   packageName: 'in.org.npci.upiapp',
+  //   name: 'BHIM',
+  //   icon: require('@/assets/upi/bhim.png'),
+  // },
+  // {
+  //   packageName: 'in.amazon.mShop.android.shopping',
+  //   name: 'Amazon Pay',
+  //   icon: require('@/assets/upi/amazonpay.png'),
+  // },
 ];

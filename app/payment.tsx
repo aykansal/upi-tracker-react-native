@@ -429,7 +429,7 @@ export default function PaymentScreen() {
         </View>
       )}
 
-      {/* UPI App Picker */}
+      {/* UPI App Picker - Bottom Sheet */}
       <UPIAppPicker
         visible={showUPIPicker}
         onSelectApp={handleAppSelect}

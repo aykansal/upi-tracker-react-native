@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "UPI Tracker",
+    "name": "UPI Ledger",
     "slug": "first",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "upitracker",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "UPI Tracker needs camera access to scan UPI QR codes for payments."
+        "NSCameraUsageDescription": "UPI Ledger needs camera access to scan UPI QR codes for payments."
       }
     },
     "android": {

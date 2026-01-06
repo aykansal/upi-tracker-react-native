@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   StyleSheet,
   Text,
   View,
@@ -22,7 +21,7 @@ import {
 import { getCategories } from "@/services/category-storage";
 import { CategoryInfo, CategoryType } from "@/types/transaction";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
+// const SCREEN_WIDTH = Dimensions.get("window").width;
 const CHART_SIZE = 200;
 const CHART_RADIUS = 80;
 const CHART_INNER_RADIUS = 50; // Creates the donut hole
@@ -209,7 +208,7 @@ const styles = StyleSheet.create({
     height: CHART_SIZE,
   },
   centerAmount: {
-    fontSize: FontSizes.xl,
+    fontSize: FontSizes.sm,
     fontWeight: "700",
     fontFamily: Fonts?.sans || "regular-font",
   },

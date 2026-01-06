@@ -12,7 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryDonutChart } from '@/components/charts/category-donut-chart';
-import { CatHeader } from '@/components/mascots/cat-illustrations';
+import { ManualEntryDrawer } from '@/components/manual-entry-drawer';
 import { TransactionCard } from '@/components/transactions/transaction-card';
 import { BorderRadius, Colors, Fonts, FontSizes, Spacing } from '@/constants/theme';
 import {
@@ -29,18 +29,21 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const [username, setUsername] = useState<string>('');
+  const [avatarId, setAvatarId] = useState<string>('');
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const currentMonthKey = getCurrentMonthKey();
 
   const loadData = useCallback(async () => {
     try {
-      // Load username from AsyncStorage
+      // Load username and avatar from AsyncStorage
       const profile = await getUserProfile();
       if (profile) {
         setUsername(profile.name);
+        setAvatarId(profile.avatarId);
       }
 
       const [transactions, stats] = await Promise.all([
@@ -76,7 +79,7 @@ export default function HomeScreen() {
   };
 
   const handleManualEntry = () => {
-    router.push('/manual-entry');
+    setShowManualEntry(true);
   };
 
   return (
@@ -100,8 +103,10 @@ export default function HomeScreen() {
               hey, {username.toLowerCase() || 'there'}
             </Text>
           </View>
-          <View style={styles.catContainer}>
-            <CatHeader />
+          <View style={styles.avatarContainer}>
+            <View style={[styles.avatarCircle, { backgroundColor: colors.surface }]}>
+              <Text style={styles.avatarText}>{avatarId || '🐱'}</Text>
+            </View>
           </View>
         </View>
 
@@ -116,7 +121,7 @@ export default function HomeScreen() {
                 })}
               </Text>
               <Text style={[styles.totalSubtitle, { color: colors.textSecondary }]}>
-                This month
+                this month
               </Text>
             </View>
           </View>
@@ -213,6 +218,12 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Manual Entry Drawer */}
+      <ManualEntryDrawer
+        visible={showManualEntry}
+        onClose={() => setShowManualEntry(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -242,8 +253,20 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xxl,
     fontWeight: 'bold',
   },
-  catContainer: {
-    opacity: 1,
+  avatarContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: FontSizes.xxl,
+    fontFamily: Fonts?.rounded || 'cute-font',
   },
   combinedCard: {
     padding: Spacing.xl,
@@ -283,7 +306,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   transactionsSection: {
-    marginBottom: Spacing.xl,
+    // marginBottom: Spacing.xl,
   },
   emptyState: {
     padding: Spacing.xl,

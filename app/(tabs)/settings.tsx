@@ -21,7 +21,6 @@ import {
   Spacing,
   TextStyles,
 } from "@/constants/theme";
-import { CatHeader } from "@/components/mascots/cat-illustrations";
 import { getCategories } from "@/services/category-storage";
 import { exportToPDF } from "@/services/pdf-export";
 import { clearAllData, getAllTransactions } from "@/services/storage";
@@ -118,7 +117,7 @@ export default function SettingsScreen() {
     Linking.openURL("https://github.com/aykansal");
   };
 
-  const appVersion = Constants.expoConfig?.version || "2.0.0";
+  const appVersion = Constants.expoConfig?.version || "2.0.1";
   const commitHash = getGitCommitHash();
 
   return (
@@ -184,7 +183,7 @@ export default function SettingsScreen() {
                 <View
                   style={[
                     styles.iconContainer,
-                    { backgroundColor: `${colors.tint}20` },
+                    // { backgroundColor: `${colors.tint}20` },
                   ]}
                 >
                   <Ionicons
@@ -234,7 +233,7 @@ export default function SettingsScreen() {
                 <View
                   style={[
                     styles.iconContainer,
-                    { backgroundColor: `${colors.tint}20` },
+                    // { backgroundColor: `${colors.tint}20` },
                   ]}
                 >
                   <Ionicons
@@ -274,7 +273,7 @@ export default function SettingsScreen() {
                 <View
                   style={[
                     styles.iconContainer,
-                    { backgroundColor: `${colors.error}20` },
+                    // { backgroundColor: `${colors.error}20` },
                   ]}
                 >
                   <Ionicons
@@ -316,7 +315,7 @@ export default function SettingsScreen() {
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.aboutItem}>
               <Text style={[styles.aboutLabel, { color: colors.text }]}>
-                App Version
+                app version
               </Text>
               <Text
                 style={[styles.aboutValue, { color: colors.textSecondary }]}
@@ -329,7 +328,7 @@ export default function SettingsScreen() {
             />
             <View style={styles.aboutItem}>
               <Text style={[styles.aboutLabel, { color: colors.text }]}>
-                Commit Hash
+                commit hash
               </Text>
               <Text
                 style={[styles.aboutValue, { color: colors.textSecondary }]}
@@ -344,12 +343,12 @@ export default function SettingsScreen() {
 
             <View style={styles.aboutItem}>
               <Text style={[styles.aboutLabel, { color: colors.text }]}>
-                Privacy
+                privacy
               </Text>
               <Text
                 style={[styles.aboutValue, { color: colors.textSecondary }]}
               >
-                All data stored locally
+                all data stored locally
               </Text>
             </View>
           </View>
@@ -500,7 +499,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: "center",
-    marginTop: 12,
+    marginTop: Spacing.md,
     // marginBottom: Spacing.sm,
   },
   builtByContainer: {

@@ -1,28 +1,18 @@
-import React, { useEffect, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Animated,
-  Dimensions,
   Image,
   ImageSourcePropType,
-  Modal,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BorderRadius, Colors, FontSizes, Fonts, Spacing } from '@/constants/theme';
 import { UPI_APPS } from '@/constants/upi-config';
-
-// import googlePayIcon from '@/assets/upi/google-pay.png';
-// import phonePeIcon from '@/assets/upi/phone-pe.png';
-// import paytmIcon from '@/assets/upi/paytm.png';
-// import bhimIcon from '@/assets/upi/bhim.png';
-// import amazonPayIcon from '@/assets/upi/amazonpay.png';
 
 export interface UPIApp {
   packageName: string;
@@ -36,191 +26,157 @@ interface UPIAppPickerProps {
   onClose: () => void;
 }
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 export function UPIAppPicker({
   visible,
   onSelectApp,
   onClose,
 }: UPIAppPickerProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
+  const bottomSheetRef = useRef<BottomSheet>(null);
 
-  const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  // Snap points for bottom sheet - adapts to content
+  const snapPoints = useMemo(() => {
+    // Use a reasonable height that fits the content
+    // For 1-5 apps, 30-40% should be sufficient
+    return ['40%'];
+  }, []);
 
+  // Control sheet visibility
   useEffect(() => {
     if (visible) {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 260,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      bottomSheetRef.current?.expand();
     } else {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: SCREEN_HEIGHT,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      bottomSheetRef.current?.close();
     }
-  }, [visible, translateY, backdropOpacity]);
+  }, [visible]);
 
-  const handleSelect = (app: UPIApp) => {
+  const handleSelect = useCallback((app: UPIApp) => {
     onSelectApp(app);
     onClose();
-  };
+  }, [onSelectApp, onClose]);
+
+  // Custom backdrop component
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+        pressBehavior="close"
+      />
+    ),
+    []
+  );
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={onClose}
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={-1}
+      snapPoints={snapPoints}
+      enablePanDownToClose
+      onClose={onClose}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{
+        backgroundColor: colors.card,
+        borderTopLeftRadius: BorderRadius.xl,
+        borderTopRightRadius: BorderRadius.xl,
+      }}
+      handleIndicatorStyle={{
+        backgroundColor: colors.border,
+        width: 40,
+        height: 4,
+      }}
     >
-      <View style={styles.root}>
-        {/* Backdrop */}
-        <Animated.View
-          style={[
-            styles.backdrop,
-            { opacity: backdropOpacity },
-          ]}
-        >
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
+      <BottomSheetView
+        style={[
+          styles.contentContainer,
+          { paddingBottom: insets.bottom + Spacing.md },
+        ]}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Choose UPI App
+          </Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
-        {/* Bottom Sheet */}
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.surface,
-              paddingBottom: insets.bottom + Spacing.md,
-              transform: [{ translateY }],
-            },
-          ]}
-        >
-          {/* Handle */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={onClose}
-            style={[styles.handleBar, { backgroundColor: colors.border }]}
-          />
-
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Choose UPI App
-            </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={22} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          {/* App List */}
-          <View style={styles.appsContainer}>
-            {UPI_APPS.map((app) => (
-              <TouchableOpacity
-                key={app.packageName}
-                style={[
-                  styles.appItem,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                  },
-                ]}
-                activeOpacity={0.75}
-                onPress={() => handleSelect(app)}
-              >
-                <View style={styles.iconWrapper}>
-                  <Image
-                    source={app.icon as ImageSourcePropType}
-                    style={styles.appIcon}
-                    resizeMode="contain"
-                  />
-                </View>
-
-                <Text style={[styles.appName, { color: colors.text }]}>
-                  {app.name}
-                </Text>
-
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={colors.textSecondary}
+        {/* App List */}
+        <View style={styles.appsContainer}>
+          {UPI_APPS.map((app) => (
+            <TouchableOpacity
+              key={app.packageName}
+              style={[
+                styles.appItem,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => handleSelect(app)}
+            >
+              <View style={styles.iconWrapper}>
+                <Image
+                  source={app.icon as ImageSourcePropType}
+                  style={styles.appIcon}
+                  resizeMode="contain"
                 />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
+              </View>
+
+              <Text style={[styles.appName, { color: colors.text }]}>
+                {app.name}
+              </Text>
+
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </BottomSheetView>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  contentContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  sheet: {
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
-    paddingTop: Spacing.sm,
-    maxHeight: '80%',
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.lg,
+    marginTop: Spacing.sm,
   },
   title: {
     fontSize: FontSizes.xl,
     fontWeight: '600',
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   closeButton: {
     width: 32,
     height: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: BorderRadius.full,
   },
   appsContainer: {
-    paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
   },
   appItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: Spacing.md,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
     gap: Spacing.md,
   },
@@ -230,6 +186,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: Colors.light.background,
   },
   appIcon: {
     width: 36,
@@ -239,5 +196,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSizes.md,
     fontWeight: '500',
+    fontFamily: Fonts?.sans || 'regular-font',
   },
 });
