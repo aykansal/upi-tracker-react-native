@@ -1,28 +1,19 @@
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import {
+  DefaultTheme,
+  ThemeProvider as NavigationThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "react-native-reanimated";
 
-import { ThemeProvider, useColorScheme } from '@/contexts/theme-context';
-import { Colors } from '@/constants/theme';
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
+import { ThemeProvider } from "@/contexts/theme-context";
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
-// Custom dark theme matching our app design
-const CustomDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: Colors.dark.background,
-    card: Colors.dark.surface,
-    text: Colors.dark.text,
-    border: Colors.dark.border,
-    primary: Colors.dark.tint,
-  },
-};
-
+// Light theme only - warm, playful, cute-but-clean aesthetic
 const CustomLightTheme = {
   ...DefaultTheme,
   colors: {
@@ -35,55 +26,92 @@ const CustomLightTheme = {
   },
 };
 
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
-  return (
-    <NavigationThemeProvider value={isDark ? CustomDarkTheme : CustomLightTheme}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    "regular-font": require("@/assets/fonts/regular-font.ttf"),
+    "cute-font": require("@/assets/fonts/cute-font.ttf"),
+  });
+  // Show loading state while checking onboarding or loading fonts
+  if (!fontsLoaded) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: Colors.light.background,
+          justifyContent: "center",
+          alignItems: "center",
         }}
       >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="scanner"
-          options={{
-            presentation: 'fullScreenModal',
-            animation: 'slide_from_bottom',
-          }}
-        />
-        <Stack.Screen
-          name="payment"
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="manual-entry"
-          options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-          }}
-        />
-        <Stack.Screen
-          name="category-manager"
-          options={{
-            animation: 'slide_from_right',
-          }}
-        />
-      </Stack>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-    </NavigationThemeProvider>
-  );
-}
+        <ThemedText>Loading...</ThemedText>
+      </View>
+    );
+  }
 
-export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <RootLayoutNav />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <NavigationThemeProvider value={CustomLightTheme}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: "slide_from_right",
+            }}
+          >
+            <Stack.Screen
+              name="index"
+              options={{
+                animation: "none",
+              }}
+            />
+            <Stack.Screen
+              name="onboarding"
+              options={{
+                animation: "fade",
+              }}
+            />
+            <Stack.Screen
+              name="onboarding/profile-setup"
+              options={{
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="scanner-generate"
+              options={{
+                presentation: "fullScreenModal",
+                animation: "slide_from_bottom",
+              }}
+            />
+            <Stack.Screen
+              name="payment"
+              options={{
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
+              name="manual-entry"
+              options={{
+                presentation: "modal",
+                animation: "slide_from_left",
+              }}
+            />
+            <Stack.Screen
+              name="category-manager"
+              options={{
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
+              name="settings/edit-profile"
+              options={{
+                animation: "slide_from_right",
+              }}
+            />
+          </Stack>
+          <StatusBar style="dark" />
+        </NavigationThemeProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

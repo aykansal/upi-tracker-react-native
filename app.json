@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "UPI Tracker",
-    "slug": "upitracker",
-    "version": "1.0.0",
+    "name": "UPI Ledger",
+    "slug": "first",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "upitracker",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "UPI Tracker needs camera access to scan UPI QR codes for payments."
+        "NSCameraUsageDescription": "UPI Ledger needs camera access to scan UPI QR codes for payments."
       }
     },
     "android": {
@@ -24,7 +24,8 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
       "package": "com.upitracker.app"
     },
@@ -51,7 +52,8 @@
         {
           "cameraPermission": "UPI Tracker needs camera access to scan UPI QR codes for payments."
         }
-      ]
+      ],
+      "./modules/expo-upi-app-launcher/app.plugin.js"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -60,9 +62,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "a06efa5f-b141-4545-be62-ad2562ba0381"
+        "projectId": "f4c17ba5-2693-418f-96ad-4122d8c5241b"
       }
     },
-    "owner": "aykansal"
+    "owner": "aykansal1"
   }
 }

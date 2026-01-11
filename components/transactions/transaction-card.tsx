@@ -11,8 +11,7 @@ import { format } from 'date-fns';
 import { Transaction, CategoryInfo } from '@/types/transaction';
 import { DEFAULT_CATEGORIES } from '@/constants/categories';
 import { getCategories, AVAILABLE_ICONS } from '@/services/category-storage';
-import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, BorderRadius, FontSizes, Fonts, Spacing } from '@/constants/theme';
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -25,8 +24,7 @@ export function TransactionCard({
   onDelete,
   showDeleteButton = true,
 }: TransactionCardProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors.light;
   const [categoryInfo, setCategoryInfo] = useState<CategoryInfo>(
     DEFAULT_CATEGORIES[transaction.category] || DEFAULT_CATEGORIES.other
   );
@@ -136,10 +134,12 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.md,
     fontWeight: '600',
     marginBottom: 2,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   payee: {
     fontSize: FontSizes.sm,
     marginBottom: 4,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   metaRow: {
     flexDirection: 'row',
@@ -147,6 +147,7 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: FontSizes.xs,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   rightSection: {
     alignItems: 'flex-end',
@@ -155,6 +156,7 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.lg,
     fontWeight: '700',
     marginBottom: Spacing.xs,
+    fontFamily: Fonts?.sans || 'regular-font',
   },
   deleteButton: {
     padding: Spacing.xs,

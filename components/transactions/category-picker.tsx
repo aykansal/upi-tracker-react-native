@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { CategoryType, CategoryInfo } from '@/types/transaction';
@@ -23,7 +24,6 @@ interface CategoryPickerProps {
   onSelectCategory: (category: CategoryType) => void;
 }
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 function CategoryButton({
   category,
@@ -36,19 +36,24 @@ function CategoryButton({
 }) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
+  const scale = useSharedValue(isSelected ? 1.05 : 1);
+
+  useEffect(() => {
+    scale.value = withSpring(isSelected ? 1.05 : 1, {
+      damping: 15,
+      stiffness: 150,
+    });
+  }, [isSelected]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          scale: withSpring(isSelected ? 1.05 : 1, {
-            damping: 15,
-            stiffness: 150,
-          }),
+          scale: scale.value,
         },
       ],
     };
-  }, [isSelected]);
+  });
 
   const getIconName = (icon: string): keyof typeof Ionicons.glyphMap => {
     // Check if it's a valid Ionicons icon
@@ -59,46 +64,49 @@ function CategoryButton({
   };
 
   return (
-    <AnimatedTouchable
-      style={[
-        styles.categoryButton,
-        {
-          backgroundColor: isSelected ? category.color : colors.card,
-          borderColor: isSelected ? category.color : colors.border,
-        },
-        animatedStyle,
-      ]}
+    <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View
+      <Animated.View
         style={[
-          styles.iconContainer,
+          styles.categoryButton,
           {
-            backgroundColor: isSelected
-              ? 'rgba(255, 255, 255, 0.2)'
-              : `${category.color}20`,
+            backgroundColor: isSelected ? category.color : colors.card,
+            borderColor: isSelected ? category.color : colors.border,
           },
+          animatedStyle,
         ]}
       >
-        <Ionicons
-          name={getIconName(category.icon)}
-          size={20}
-          color={isSelected ? '#fff' : category.color}
-        />
-      </View>
-      <Text
-        style={[
-          styles.categoryLabel,
-          {
-            color: isSelected ? '#fff' : colors.text,
-          },
-        ]}
-        numberOfLines={1}
-      >
-        {category.label}
-      </Text>
-    </AnimatedTouchable>
+        <View
+          style={[
+            styles.iconContainer,
+            {
+              backgroundColor: isSelected
+                ? 'rgba(255, 255, 255, 0.2)'
+                : `${category.color}20`,
+            },
+          ]}
+        >
+          <Ionicons
+            name={getIconName(category.icon)}
+            size={20}
+            color={isSelected ? '#fff' : category.color}
+          />
+        </View>
+        <Text
+          style={[
+            styles.categoryLabel,
+            {
+              color: isSelected ? '#fff' : colors.text,
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {category.label}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 

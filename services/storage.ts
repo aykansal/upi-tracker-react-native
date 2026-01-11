@@ -23,12 +23,16 @@ export const getAllTransactions = async (): Promise<Transaction[]> => {
 
 /**
  * Save a new transaction
+ * Supports both P2P and merchant transactions with optional tracking fields
  */
 export const saveTransaction = async (
   paymentData: UPIPaymentData,
   category: CategoryType,
   reason?: string,
-  amount?: number
+  amount?: number,
+  transactionType?: 'merchant' | 'p2p',
+  merchantCategory?: string,
+  organizationId?: string
 ): Promise<Transaction> => {
   try {
     const transactions = await getAllTransactions();
@@ -43,6 +47,10 @@ export const saveTransaction = async (
       reason: reason || undefined,
       timestamp,
       monthKey: format(new Date(timestamp), 'yyyy-MM'),
+      // Merchant tracking fields
+      transactionType: transactionType || 'p2p',
+      merchantCategory: merchantCategory || undefined,
+      organizationId: organizationId || undefined,
     };
 
     transactions.unshift(newTransaction);

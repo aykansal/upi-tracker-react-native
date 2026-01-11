@@ -1,3 +1,6 @@
+*.test.*
+SHARE-SHEET.md
+
 node_modules
 .env
 .env.local

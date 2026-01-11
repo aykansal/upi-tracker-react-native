@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+- Visual style: playful, calm, cute indie utility
+- Never clutter screens
+- Use rounded corners everywhere
+- Prefer empty space over dividers
+- Use friendly human copy, but keep labels direct and clear
+- Mascot (cat) usage rules:
+  - Allowed only in onboarding, empty states, and headers
+  - Never inside lists, charts, or dense data areas
+  - Flat illustration style, calm expressions only
+- Primary action is always visually dominant
+- Manual actions must never be hidden behind menus
+- Charts should be clean, low-ink, and readable
+- No gradients, no glassmorphism, no flashy effects

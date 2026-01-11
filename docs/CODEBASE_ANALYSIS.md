@@ -83,6 +83,9 @@ The codebase analysis covered:
 | **Navigation** | `expo-router` | File-based routing | ✅ Excellent choice for React Native |
 | **Storage** | `@react-native-async-storage/async-storage` | Local data persistence | ✅ Perfect for privacy-first app |
 | **Camera** | `expo-camera` | QR code scanning | ✅ Native camera integration |
+| **QR Generation** | `react-native-qrcode-svg` | QR code generation | ✅ SVG-based, seamless generation |
+| **QR Parsing** | `jsqr` | QR code parsing | ✅ Additional QR parsing support |
+| **Sharing** | `expo-sharing` | Share QR to UPI apps | ✅ Native share sheet integration |
 | **Charts** | `react-native-chart-kit` | Data visualization | ✅ SVG-based, cross-platform |
 | **PDF** | `expo-print` | Report generation | ✅ Native PDF creation |
 | **UI** | `react-native-reanimated` | Animations | ✅ High-performance animations |
@@ -110,6 +113,19 @@ interface Transaction {
   reason?: string;         // Optional description
   timestamp: number;       // Unix timestamp
   monthKey: string;        // 'YYYY-MM' for grouping
+  transactionType?: 'merchant' | 'p2p';  // Transaction type
+  merchantCategory?: string;              // Merchant category code
+  organizationId?: string;                // Organization ID
+}
+
+interface UPIPaymentData {
+  upiId: string;
+  payeeName: string;
+  amount?: number;
+  transactionNote?: string;
+  originalQRData?: string;        // Original QR URL (for merchant QR)
+  isMerchant: boolean;            // Merchant detection flag
+  merchantParams?: MerchantParams; // Merchant-specific params
 }
 ```
 
@@ -130,15 +146,18 @@ interface Transaction {
 ## 🔄 Key User Flows & Sequence Diagrams
 
 ### 1. QR Scanning → Transaction Creation
+
+#### Flow A: QR with Amount (Amount Locked)
 ```mermaid
 sequenceDiagram
     participant User
     participant ScannerScreen
     participant CameraAPI
     participant UPIParser
+    participant QRGenerator
     participant PaymentScreen
     participant StorageService
-    participant UPIApp
+    participant SharingAPI
 
     User->>ScannerScreen: Tap "Scan QR"
     ScannerScreen->>CameraAPI: Request permission
@@ -146,11 +165,51 @@ sequenceDiagram
     ScannerScreen->>CameraAPI: Start scanning
     CameraAPI-->>ScannerScreen: QR detected
     ScannerScreen->>UPIParser: Parse QR data
-    UPIParser-->>ScannerScreen: Payment data
-    ScannerScreen->>PaymentScreen: Navigate with data
-    User->>PaymentScreen: Edit & confirm
+    UPIParser-->>ScannerScreen: Payment data (with amount)
+    Note over ScannerScreen: Amount detected - generate QR
+    ScannerScreen->>QRGenerator: Generate QR from original URL
+    QRGenerator-->>ScannerScreen: QR image
+    ScannerScreen->>PaymentScreen: Navigate with QR + amountLocked=true
+    Note over PaymentScreen: Amount field is read-only
+    User->>PaymentScreen: Enter category & reason
+    User->>PaymentScreen: Tap "Open in UPI App"
     PaymentScreen->>StorageService: Save transaction
-    PaymentScreen->>UPIApp: Launch payment
+    PaymentScreen->>SharingAPI: Share QR image
+    SharingAPI-->>User: Native share sheet
+```
+
+#### Flow B: QR without Amount (User Enters Amount)
+```mermaid
+sequenceDiagram
+    participant User
+    participant ScannerScreen
+    participant CameraAPI
+    participant UPIParser
+    participant PaymentScreen
+    participant URLModifier
+    participant QRGenerator
+    participant StorageService
+    participant SharingAPI
+
+    User->>ScannerScreen: Tap "Scan QR"
+    ScannerScreen->>CameraAPI: Request permission
+    CameraAPI-->>ScannerScreen: Permission granted
+    ScannerScreen->>CameraAPI: Start scanning
+    CameraAPI-->>ScannerScreen: QR detected
+    ScannerScreen->>UPIParser: Parse QR data
+    UPIParser-->>ScannerScreen: Payment data (no amount)
+    Note over ScannerScreen: No amount - navigate without QR
+    ScannerScreen->>PaymentScreen: Navigate with URL + amountLocked=false
+    User->>PaymentScreen: Enter amount
+    User->>PaymentScreen: Enter category & reason
+    User->>PaymentScreen: Tap "Open in UPI App"
+    PaymentScreen->>URLModifier: modifyUPIUrl(originalUrl, amount, reason)
+    URLModifier-->>PaymentScreen: Modified URL
+    PaymentScreen->>QRGenerator: Generate QR from modified URL
+    QRGenerator-->>PaymentScreen: QR image
+    PaymentScreen->>StorageService: Save transaction
+    PaymentScreen->>SharingAPI: Share QR image
+    SharingAPI-->>User: Native share sheet
 ```
 
 ### 2. Analytics & Reporting Flow
@@ -347,17 +406,24 @@ The application's core strength is its **privacy-first design**. Unlike traditio
 
 ### 2. UPI Integration Excellence
 The UPI QR scanning and payment launching implementation is **production-ready**:
-- Robust QR parsing supporting multiple formats
-- Proper URL encoding/decoding
-- Error handling for invalid QR codes
-- Integration with native UPI apps
+- **Robust QR Parsing**: Supports multiple UPI URL formats (P2P and merchant)
+- **Merchant QR Support**: Detects and preserves merchant QR codes with security parameters
+- **Amount Locking**: Intelligently handles QR codes with fixed amounts (user cannot modify)
+- **Dynamic QR Generation**: Generates QR codes with user-entered amounts when original has none
+- **Seamless Generation**: Background QR generation without loading screens
+- **URL Modification**: `modifyUPIUrl()` helper preserves merchant params while updating amount/note
+- **Proper URL Encoding/Decoding**: Handles special characters correctly
+- **Error Handling**: Comprehensive error handling for invalid QR codes
+- **Native Sharing**: QR images shared via native share sheet to UPI apps
 
 ### 3. Component Architecture
 The component design follows **React best practices**:
-- Clear separation between presentational and container components
-- Props-based APIs with TypeScript interfaces
-- Reusable components with consistent styling
-- Animation integration using React Native Reanimated
+- **Clear Separation**: Presentational and container components well-separated
+- **Props-based APIs**: TypeScript interfaces for all component props
+- **Reusable Components**: Consistent styling and behavior across app
+- **Animation Integration**: React Native Reanimated for smooth interactions
+- **Conditional Rendering**: Smart UI updates based on QR state (locked/unlocked amount)
+- **Hidden Components**: Off-screen QR generation for seamless user experience
 
 ### 4. Service Layer Design
 The service layer provides **excellent abstraction**:
@@ -380,13 +446,15 @@ The theming system is **comprehensive and flexible**:
 ### High Priority
 1. **Data Backup/Restore**: Add export/import functionality for data migration
 2. **Search Optimization**: Implement indexed search for large transaction volumes
-3. **Offline QR Processing**: Cache and process QR codes without internet
+3. **QR Code Validation**: Enhanced validation for merchant QR signatures
+4. **Amount Validation**: Prevent invalid amounts in QR generation
 
 ### Medium Priority
 1. **Biometric Authentication**: Optional app lock using device biometrics
 2. **Receipt Scanning**: OCR integration for receipt digitization
 3. **Budget Tracking**: Monthly budget setting and notifications
-4. **Multi-currency Support**: INR is primary, but could support others
+4. **QR Preview**: Show QR preview before sharing to UPI app
+5. **Multi-currency Support**: INR is primary, but could support others
 
 ### Low Priority
 1. **Data Visualization**: Additional chart types (line charts, trends)
@@ -403,10 +471,20 @@ The theming system is **comprehensive and flexible**:
 - **Strong Technical Foundation**: Modern React Native with Expo, TypeScript, and clean architecture
 - **Privacy-Centric Design**: Local-only data storage addressing real user privacy concerns
 - **Production-Ready Code**: Comprehensive error handling, validation, and user experience
+- **Intelligent QR Handling**: Smart amount locking and dynamic QR generation for seamless UX
+- **Merchant QR Support**: Full support for merchant QR codes with security parameter preservation
 - **Scalable Architecture**: Modular design that can accommodate future enhancements
 - **Excellent UX**: Intuitive interface with smooth animations and responsive design
 
 The application successfully addresses the **privacy gap** in Indian expense tracking by providing a secure, local-only alternative to bank-integrated solutions. The technical implementation is **robust, maintainable, and ready for production deployment**.
+
+### Recent Enhancements (Latest Update)
+- **Seamless QR Generation**: Background QR generation without loading screens
+- **Amount Locking**: Preserves original QR amounts when present (user cannot modify)
+- **Dynamic QR Creation**: Generates QR with user-entered amount when original has none
+- **Merchant QR Preservation**: Maintains security parameters for merchant QR codes
+- **URL Modification**: Smart URL modification that preserves merchant params
+- **Native Sharing**: QR images shared via native share sheet to UPI apps
 
 ### 📚 Documentation Files
 - **[`ARCHITECTURE.md`](ARCHITECTURE.md)**: Complete technical architecture documentation
@@ -415,5 +493,12 @@ The application successfully addresses the **privacy gap** in Indian expense tra
 ---
 
 **Analysis Completed**: December 29, 2024
+**Last Updated**: January 2025
 **Author**: AI Assistant (Cursor)
 **Analysis Scope**: Complete codebase review and documentation
+
+### Recent Updates (January 2025)
+- Updated QR generation flow with amount locking
+- Added merchant QR code support documentation
+- Updated sequence diagrams for new payment flows
+- Documented URL modification capabilities

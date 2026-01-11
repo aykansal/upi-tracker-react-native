@@ -27,8 +27,7 @@ import {
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function CategoryManagerScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
   const [categories, setCategories] = useState<CategoryInfo[]>([]);
@@ -157,7 +156,7 @@ export default function CategoryManagerScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
 
       {/* Header */}
       <View

@@ -1,41 +1,50 @@
-import React, { useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-} from "react-native";
-import { useFocusEffect, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
+import { router, useFocusEffect } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React, { useCallback, useState } from "react";
+import {
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Colors, BorderRadius, FontSizes, Spacing } from "@/constants/theme";
-import { clearAllData, getAllTransactions } from "@/services/storage";
-import { exportToPDF } from "@/services/pdf-export";
+import {
+  BorderRadius,
+  Colors,
+  FontSizes,
+  Spacing,
+  TextStyles,
+} from "@/constants/theme";
 import { getCategories } from "@/services/category-storage";
-import { useTheme } from "@/contexts/theme-context";
-
-type ThemeMode = "light" | "dark" | "system";
+import { exportToPDF } from "@/services/pdf-export";
+import { clearAllData, getAllTransactions } from "@/services/storage";
+import { getUserProfile } from "@/services/user-storage";
+import { getGitCommitHash } from "@/utils/git-version";
 
 export default function SettingsScreen() {
-  const { colorScheme, themeMode, setThemeMode } = useTheme();
-  const colors = Colors[colorScheme ?? "dark"];
-  const insets = useSafeAreaInsets();
+  const colors = Colors.light;
 
+  const [username, setUsername] = useState<string>("");
+  const [avatarId, setAvatarId] = useState<string>("");
   const [transactionCount, setTransactionCount] = useState(0);
   const [categoryCount, setCategoryCount] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleThemeChange = async (mode: ThemeMode) => {
-    await setThemeMode(mode);
-  };
-
-  const loadStats = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
+      // Load user profile
+      const profile = await getUserProfile();
+      if (profile) {
+        setUsername(profile.name);
+        setAvatarId(profile.avatarId);
+      }
+
       const [transactions, categories] = await Promise.all([
         getAllTransactions(),
         getCategories(),
@@ -49,9 +58,13 @@ export default function SettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadStats();
-    }, [loadStats])
+      loadData();
+    }, [loadData])
   );
+
+  const handleEditProfile = () => {
+    router.push("/settings/edit-profile" as any);
+  };
 
   const handleClearData = () => {
     if (transactionCount === 0) {
@@ -100,22 +113,60 @@ export default function SettingsScreen() {
     }
   };
 
-  const appVersion = Constants.expoConfig?.version || "1.0.0";
+  const handleOpenGitHub = () => {
+    Linking.openURL("https://github.com/aykansal");
+  };
+
+  const appVersion = Constants.expoConfig?.version || "2.0.1";
+  const commitHash = getGitCommitHash();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top"]}
+    >
+      <StatusBar style="dark" />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + Spacing.md },
+          { paddingTop: Spacing.lg },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+        {/* Profile Card */}
+        <View style={[styles.profileCard, { backgroundColor: colors.card }]}>
+          <TouchableOpacity
+            style={styles.profileContent}
+            onPress={handleEditProfile}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.avatarContainer,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <Text style={styles.avatarText}>{avatarId || "🐱"}</Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, { color: colors.text }]}>
+                {username || "User"}
+              </Text>
+              <Text
+                style={[styles.profileSubtext, { color: colors.textSecondary }]}
+              >
+                Tap to edit your profile
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
 
         {/* Categories Section */}
         <View style={styles.section}>
@@ -124,7 +175,6 @@ export default function SettingsScreen() {
           </Text>
 
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            {/* Manage Categories */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => router.push("/category-manager")}
@@ -133,7 +183,7 @@ export default function SettingsScreen() {
                 <View
                   style={[
                     styles.iconContainer,
-                    { backgroundColor: `${colors.tint}20` },
+                    // { backgroundColor: `${colors.tint}20` },
                   ]}
                 >
                   <Ionicons
@@ -183,7 +233,7 @@ export default function SettingsScreen() {
                 <View
                   style={[
                     styles.iconContainer,
-                    { backgroundColor: `${colors.tint}20` },
+                    // { backgroundColor: `${colors.tint}20` },
                   ]}
                 >
                   <Ionicons
@@ -223,7 +273,7 @@ export default function SettingsScreen() {
                 <View
                   style={[
                     styles.iconContainer,
-                    { backgroundColor: `${colors.error}20` },
+                    // { backgroundColor: `${colors.error}20` },
                   ]}
                 >
                   <Ionicons
@@ -256,74 +306,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Appearance Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            APPEARANCE
-          </Text>
-
-          <View style={[styles.card]}>
-            <View style={styles.themeSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === "light" ? colors.tint : "transparent",
-                    borderColor:
-                      themeMode === "light" ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange("light")}
-              >
-                <Ionicons
-                  name="sunny"
-                  size={20}
-                  color={themeMode === "light" ? "#fff" : colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === "dark" ? colors.tint : "transparent",
-                    borderColor:
-                      themeMode === "dark" ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange("dark")}
-              >
-                <Ionicons
-                  name="moon"
-                  size={20}
-                  color={themeMode === "dark" ? "#fff" : colors.textSecondary}
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === "system" ? colors.tint : "transparent",
-                    borderColor:
-                      themeMode === "system" ? colors.tint : colors.border,
-                  },
-                ]}
-                onPress={() => handleThemeChange("system")}
-              >
-                <Ionicons
-                  name="phone-portrait"
-                  size={20}
-                  color={themeMode === "system" ? "#fff" : colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
         {/* About Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -333,12 +315,25 @@ export default function SettingsScreen() {
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <View style={styles.aboutItem}>
               <Text style={[styles.aboutLabel, { color: colors.text }]}>
-                App Version
+                app version
               </Text>
               <Text
                 style={[styles.aboutValue, { color: colors.textSecondary }]}
               >
                 {appVersion}
+              </Text>
+            </View>
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.aboutItem}>
+              <Text style={[styles.aboutLabel, { color: colors.text }]}>
+                commit hash
+              </Text>
+              <Text
+                style={[styles.aboutValue, { color: colors.textSecondary }]}
+              >
+                {commitHash}
               </Text>
             </View>
 
@@ -348,18 +343,36 @@ export default function SettingsScreen() {
 
             <View style={styles.aboutItem}>
               <Text style={[styles.aboutLabel, { color: colors.text }]}>
-                Privacy
+                privacy
               </Text>
               <Text
                 style={[styles.aboutValue, { color: colors.textSecondary }]}
               >
-                All data stored locally
+                all data stored locally
               </Text>
             </View>
           </View>
         </View>
+
+        {/* Built by Love Footer */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.builtByContainer}
+            onPress={handleOpenGitHub}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.builtByText, { color: colors.textSecondary }]}>
+              Built with{" "}
+              <Ionicons name="heart" size={14} color={colors.error} />
+              by{" "}
+              <Text style={[styles.githubLink, { color: colors.tint }]}>
+                aykansal
+              </Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -374,13 +387,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xl,
   },
-  title: {
-    fontSize: FontSizes.xxl,
-    fontWeight: "700",
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.xl,
   },
-  section: {
+  title: {
+    ...TextStyles.default,
+    fontSize: FontSizes.xxl,
+  },
+  catContainer: {
+    opacity: 0.4,
+  },
+  profileCard: {
+    borderRadius: BorderRadius.xl,
     marginBottom: Spacing.xl,
+    overflow: "hidden",
+  },
+  profileContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  avatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.full,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: Spacing.md,
+  },
+  avatarText: {
+    fontSize: FontSizes.xxl,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    ...TextStyles.default,
+    fontSize: FontSizes.lg,
+    marginBottom: Spacing.xs,
+  },
+  profileSubtext: {
+    ...TextStyles.default,
+    fontSize: FontSizes.sm,
+  },
+  section: {
+    marginBottom: Spacing.sm,
   },
   sectionTitle: {
     fontSize: FontSizes.xs,
@@ -388,29 +442,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: Spacing.sm,
     marginLeft: Spacing.xs,
+    ...TextStyles.default,
   },
   card: {
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
-  },
-  themeSelector: {
-    flexDirection: "row",
-    padding: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  themeOption: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    gap: Spacing.xs,
-  },
-  themeOptionText: {
-    fontSize: FontSizes.sm,
-    fontWeight: "500",
   },
   menuItem: {
     flexDirection: "row",
@@ -435,15 +471,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuItemLabel: {
+    ...TextStyles.default,
     fontSize: FontSizes.md,
-    fontWeight: "500",
     marginBottom: 2,
   },
   menuItemDescription: {
+    ...TextStyles.default,
     fontSize: FontSizes.sm,
   },
   divider: {
     height: 1,
+    marginHorizontal: Spacing.md,
   },
   aboutItem: {
     flexDirection: "row",
@@ -452,24 +490,34 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
   },
   aboutLabel: {
+    ...TextStyles.default,
     fontSize: FontSizes.md,
   },
   aboutValue: {
+    ...TextStyles.default,
     fontSize: FontSizes.md,
   },
-  infoCard: {
+  footer: {
+    alignItems: "center",
+    marginTop: Spacing.md,
+    // marginBottom: Spacing.sm,
+  },
+  builtByContainer: {
     flexDirection: "row",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.lg,
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
-  infoIcon: {
-    marginRight: Spacing.md,
-    marginTop: 2,
-  },
-  infoText: {
-    flex: 1,
+  builtByText: {
+    ...TextStyles.default,
     fontSize: FontSizes.sm,
-    lineHeight: 20,
+  },
+  githubLink: {
+    ...TextStyles.default,
+  },
+  commitHash: {
+    ...TextStyles.default,
+    fontSize: FontSizes.xs,
+    fontFamily: "monospace",
   },
 });

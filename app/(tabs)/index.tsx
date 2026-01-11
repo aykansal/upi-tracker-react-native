@@ -1,46 +1,53 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { format } from 'date-fns';  
-
-import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
-import { Transaction, MonthlyStats } from '@/types/transaction';
-import { CategoryPieChart } from '@/components/charts/category-pie-chart';
-import { TransactionCard } from '@/components/transactions/transaction-card';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
-  getRecentTransactions,
-  getMonthlyStats,
-  getCurrentMonthKey,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { CategoryDonutChart } from '@/components/charts/category-donut-chart';
+import { ManualEntryDrawer } from '@/components/manual-entry-drawer';
+import { TransactionCard } from '@/components/transactions/transaction-card';
+import { BorderRadius, Colors, Fonts, FontSizes, Spacing } from '@/constants/theme';
+import {
   deleteTransaction,
+  getCurrentMonthKey,
+  getMonthlyStats,
+  getRecentTransactions,
 } from '@/services/storage';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { getUserProfile } from '@/services/user-storage';
+import { MonthlyStats, Transaction } from '@/types/transaction';
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
+  const [username, setUsername] = useState<string>('');
+  const [avatarId, setAvatarId] = useState<string>('');
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const currentMonthKey = getCurrentMonthKey();
-  const currentMonthLabel = format(new Date(), 'MMMM yyyy');
 
   const loadData = useCallback(async () => {
     try {
+      // Load username and avatar from AsyncStorage
+      const profile = await getUserProfile();
+      if (profile) {
+        setUsername(profile.name);
+        setAvatarId(profile.avatarId);
+      }
+
       const [transactions, stats] = await Promise.all([
-        getRecentTransactions(5),
+        getRecentTransactions(3),
         getMonthlyStats(currentMonthKey),
       ]);
       setRecentTransactions(transactions);
@@ -67,24 +74,19 @@ export default function HomeScreen() {
     loadData();
   };
 
-  const handleQRScan = () => {
-    router.push('/scanner');
+  const handleScanQR = () => {
+    router.push('/scanner-generate');
   };
 
   const handleManualEntry = () => {
-    router.push('/manual-entry');
+    setShowManualEntry(true);
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + Spacing.md },
-        ]}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -94,47 +96,45 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with greeting and cat */}
         <View style={styles.header}>
-          <Text style={[styles.appName, { color: colors.tint }]}>
-            UPI Tracker
-          </Text>
-          <Text style={[styles.monthLabel, { color: colors.textSecondary }]}>
-            {currentMonthLabel}
-          </Text>
+          <View style={styles.greetingContainer}>
+            <Text style={[styles.greeting, { color: colors.text }]}>
+              hey, {username.toLowerCase() || 'there'}
+            </Text>
+          </View>
+          <View style={styles.avatarContainer}>
+            <View style={[styles.avatarCircle, { backgroundColor: colors.surface }]}>
+              <Text style={styles.avatarText}>{avatarId || '🐱'}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Monthly Total Card */}
-        <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>
-            Total Spent This Month
-          </Text>
-          <Text style={[styles.totalAmount, { color: colors.text }]}>
-            ₹{(monthlyStats?.total || 0).toLocaleString('en-IN', {
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 2,
-            })}
-          </Text>
-          <Text style={[styles.transactionCount, { color: colors.textSecondary }]}>
-            {monthlyStats?.transactionCount || 0} transactions
-          </Text>
-        </View>
-
-        {/* Category Breakdown */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Spending by Category
-          </Text>
-          {monthlyStats && (
-            <CategoryPieChart
-              categoryBreakdown={monthlyStats.categoryBreakdown}
-              total={monthlyStats.total}
+        {/* Combined Monthly Total and Donut Chart */}
+        <View style={[styles.combinedCard, { backgroundColor: colors.card }]}>
+          <View style={styles.combinedHeader}>
+            <View>
+              <Text style={[styles.totalAmount, { color: colors.text }]}>
+                ₹{(monthlyStats?.total || 0).toLocaleString('en-IN', {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+              <Text style={[styles.totalSubtitle, { color: colors.textSecondary }]}>
+                this month
+              </Text>
+            </View>
+          </View>
+          <View style={styles.chartContainer}>
+            <CategoryDonutChart
+              categoryBreakdown={monthlyStats?.categoryBreakdown || {}}
+              total={monthlyStats?.total || 0}
             />
-          )}
+          </View>
         </View>
 
         {/* Recent Transactions */}
-        <View style={styles.section}>
+        <View style={styles.transactionsSection}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Recent Transactions
@@ -176,40 +176,34 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Bottom padding for FABs */}
-        <View style={{ height: 120 }} />
+        {/* Bottom padding for fixed actions */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Payment Options */}
+      {/* Fixed Bottom Actions - Above Tab Bar */}
       <View
         style={[
-          styles.paymentOptions,
+          styles.bottomActions,
           {
-            bottom: insets.bottom + Spacing.md,
+            paddingBottom: insets.bottom + Spacing.md,
+            // backgroundColor: colors.background,
           },
         ]}
       >
-        {/* QR Scan Button */}
+        {/* Primary: Scan QR */}
         <TouchableOpacity
-          style={[
-            styles.paymentButton,
-            styles.qrButton,
-            {
-              backgroundColor: colors.tint,
-            },
-          ]}
-          onPress={handleQRScan}
+          style={[styles.primaryButton, { backgroundColor: colors.tint }]}
+          onPress={handleScanQR}
           activeOpacity={0.8}
         >
-          <Ionicons name="scan" size={24} color="#fff" />
-          <Text style={styles.paymentButtonText}>Scan QR</Text>
+          <Ionicons name="qr-code" size={20} color="#FFFFFF" />
+          <Text style={styles.primaryButtonText}>Scan QR</Text>
         </TouchableOpacity>
 
-        {/* Manual Entry Button */}
+        {/* Secondary: Manual Entry */}
         <TouchableOpacity
           style={[
-            styles.paymentButton,
-            styles.manualButton,
+            styles.secondaryButton,
             {
               backgroundColor: colors.card,
               borderColor: colors.border,
@@ -218,13 +212,19 @@ export default function HomeScreen() {
           onPress={handleManualEntry}
           activeOpacity={0.8}
         >
-          <Ionicons name="create-outline" size={24} color={colors.text} />
-          <Text style={[styles.paymentButtonText, { color: colors.text }]}>
-            Manual
+          <Ionicons name="create-outline" size={20} color={colors.text} />
+          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+            Manual Entry
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+
+      {/* Manual Entry Drawer */}
+      <ManualEntryDrawer
+        visible={showManualEntry}
+        onClose={() => setShowManualEntry(false)}
+      />
+    </SafeAreaView>
   );
 }
 
@@ -237,39 +237,57 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xl,
+    paddingTop: Spacing.lg,
   },
   header: {
-    marginBottom: Spacing.lg,
-  },
-  appName: {
-    fontSize: FontSizes.xxl,
-    fontWeight: '700',
-    marginBottom: Spacing.xs,
-  },
-  monthLabel: {
-    fontSize: FontSizes.md,
-  },
-  totalCard: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.xl,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
-  totalLabel: {
-    fontSize: FontSizes.sm,
-    marginBottom: Spacing.xs,
+  greetingContainer: {
+    flex: 1,
+  },
+  greeting: {
+    fontFamily: Fonts?.rounded || 'cute-font',
+    fontSize: FontSizes.xxl,
+    fontWeight: 'bold',
+  },
+  avatarContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: BorderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: FontSizes.xxl,
+    fontFamily: Fonts?.rounded || 'cute-font',
+  },
+  combinedCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing.xl,
+  },
+  combinedHeader: {
+    marginBottom: Spacing.lg,
   },
   totalAmount: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.display,
     fontWeight: '700',
     marginBottom: Spacing.xs,
   },
-  transactionCount: {
-    fontSize: FontSizes.sm,
+  totalSubtitle: {
+    fontFamily: Fonts?.sans || 'regular-font',
+    fontSize: FontSizes.md,
   },
-  section: {
-    marginBottom: Spacing.xl,
+  chartContainer: {
+    width: '100%',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -278,13 +296,17 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   sectionTitle: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.lg,
     fontWeight: '600',
-    marginBottom: Spacing.md,
   },
   seeAllButton: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.sm,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  transactionsSection: {
+    // marginBottom: Spacing.xl,
   },
   emptyState: {
     padding: Spacing.xl,
@@ -292,44 +314,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.md,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: Spacing.md,
     marginBottom: Spacing.xs,
   },
   emptySubtext: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.sm,
     textAlign: 'center',
   },
-  paymentOptions: {
+  bottomActions: {
     position: 'absolute',
-    left: Spacing.lg,
-    right: Spacing.lg,
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
     gap: Spacing.md,
   },
-  paymentButton: {
+  primaryButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.full,
     gap: Spacing.sm,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
-  qrButton: {
-    // Primary button styling handled by backgroundColor
+  primaryButtonText: {
+    fontFamily: Fonts?.sans || 'regular-font',
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  manualButton: {
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
+    gap: Spacing.sm,
   },
-  paymentButtonText: {
-    color: '#fff',
+  secondaryButtonText: {
+    fontFamily: Fonts?.sans || 'regular-font',
     fontSize: FontSizes.md,
     fontWeight: '600',
   },

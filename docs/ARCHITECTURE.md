@@ -70,11 +70,14 @@ UPI Tracker is a privacy-first mobile application designed to track UPI payments
 "@expo/vector-icons": "^15.0.3"
 ```
 
-#### UPI Integration
+#### UPI Integration & QR Generation
 ```json
 "expo-camera": "^17.0.10",
 "expo-linking": "~8.0.11",
-"expo-intent-launcher": "^13.0.8"
+"expo-intent-launcher": "^13.0.8",
+"expo-sharing": "^14.0.8",
+"react-native-qrcode-svg": "^6.3.21",
+"jsqr": "^1.4.0"
 ```
 
 #### Charts & Visualization
@@ -182,6 +185,18 @@ interface UPIPaymentData {
   payeeName: string;                // Payee name
   amount?: number;                  // Optional amount
   transactionNote?: string;         // Optional note
+  originalQRData?: string;          // Original QR URL (for merchant QR codes)
+  isMerchant: boolean;               // Merchant QR detection flag
+  merchantParams?: MerchantParams;  // Merchant-specific parameters
+}
+
+interface MerchantParams {
+  sign?: string;      // Digital signature
+  mc?: string;        // Merchant category code
+  mode?: string;      // Transaction mode
+  orgid?: string;     // Organization ID
+  purpose?: string;   // Purpose code
+  tid?: string;       // Terminal ID
 }
 ```
 
@@ -247,15 +262,37 @@ AsyncStorage Layer
 
 **Supported UPI URL Formats:**
 ```
-upi://pay?pa=merchant@upi&pn=MerchantName&am=100.00&cu=INR
-upi://pay?pa=merchant@upi&pn=MerchantName&tn=PaymentNote
+# P2P Transaction
+upi://pay?pa=merchant@upi&pn=MerchantName&am=100.00&cu=INR&tn=PaymentNote
+
+# Merchant Transaction (with signature)
+upi://pay?pa=merchant@upi&pn=MerchantName&am=100.00&cu=INR&sign=ABC123&mc=1234&orgid=ORG001
+
+# Transaction without amount (user enters later)
+upi://pay?pa=merchant@upi&pn=MerchantName&cu=INR
 ```
 
-#### UPI Launcher (`services/upi-launcher.ts`)
+**Merchant QR Detection:**
+- Detects merchant QR codes by presence of security parameters (sign, mc, orgid, etc.)
+- Preserves original URL for merchant QR codes to maintain security validation
+- Allows amount/note modification for P2P transactions only
+
+#### UPI URL Builder (`constants/upi-config.ts`)
 **Responsibilities:**
-- Launch UPI payment apps
-- Check UPI app availability
-- Handle payment intent creation
+- Build UPI payment URLs from parameters
+- Modify existing UPI URLs with new amount/transaction note
+- Support for both P2P and merchant QR codes
+- Handle merchant-specific parameters (sign, mc, orgid, etc.)
+
+**Key Functions:**
+- `buildUPIUrl()` - Creates UPI URL from payment parameters
+- `modifyUPIUrl()` - Updates existing UPI URL with new amount/note while preserving merchant params
+
+#### UPI QR Sharing (`services/upi-launcher.ts`)
+**Responsibilities:**
+- Share QR images to UPI payment apps via native share sheet
+- Check sharing availability on device
+- Handle QR image sharing workflow
 
 ### 3. Category Management (`services/category-storage.ts`)
 
@@ -329,8 +366,9 @@ const Colors = {
 
 #### Screen Components
 - **HomeScreen**: Dashboard with monthly stats and recent transactions
-- **ScannerScreen**: Camera interface for QR scanning
-- **PaymentScreen**: Transaction creation and UPI payment launch
+- **ScannerGenerateScreen**: Camera interface for QR scanning with seamless generation
+- **PaymentScreen**: Transaction creation, QR generation, and UPI payment sharing
+- **ManualEntryScreen**: Manual UPI ID entry with QR generation
 - **HistoryScreen**: Transaction list with search functionality
 - **SettingsScreen**: App configuration and data management
 
@@ -346,10 +384,10 @@ app/
 │   ├── index.tsx        # Home/Dashboard screen
 │   ├── history.tsx      # Transaction history
 │   └── settings.tsx     # Settings screen
-├── scanner.tsx          # QR scanner (modal)
-├── payment.tsx          # Payment creation
+├── scanner-generate.tsx # QR scanner with auto-generation (modal)
+├── payment.tsx          # Payment creation with QR generation
 ├── manual-entry.tsx     # Manual transaction entry
-└── category-manager.tsx # Category management
+└── category-manager.tsx  # Category management
 ```
 
 ### Navigation Patterns
@@ -360,7 +398,7 @@ app/
 - Active state styling with theme colors
 
 #### Modal Navigation
-- Scanner screen (full-screen modal)
+- Scanner screen (full-screen modal with seamless QR generation)
 - Manual entry (slide-up modal)
 - Category manager (slide navigation)
 
@@ -438,15 +476,18 @@ app/
 
 ### QR Code Scanning & Transaction Creation
 
+#### Flow 1: QR with Amount (Amount Locked)
+
 ```mermaid
 sequenceDiagram
     participant User
     participant ScannerScreen
     participant CameraAPI
     participant UPIParser
+    participant QRGenerator
     participant PaymentScreen
     participant StorageService
-    participant UPIApp
+    participant SharingAPI
 
     User->>ScannerScreen: Tap "Scan QR"
     ScannerScreen->>CameraAPI: Request camera permission
@@ -455,17 +496,101 @@ sequenceDiagram
     CameraAPI-->>ScannerScreen: QR code detected
 
     ScannerScreen->>UPIParser: Parse QR data
-    UPIParser-->>ScannerScreen: Parsed payment data
-
-    ScannerScreen->>PaymentScreen: Navigate with parsed data
-    User->>PaymentScreen: Review & edit transaction
-    User->>PaymentScreen: Tap "Pay Now"
+    UPIParser-->>ScannerScreen: Payment data (with amount)
+    
+    Note over ScannerScreen: Amount detected in QR
+    ScannerScreen->>QRGenerator: Generate QR from original URL
+    QRGenerator-->>ScannerScreen: QR image file
+    
+    ScannerScreen->>PaymentScreen: Navigate with QR + amountLocked=true
+    Note over PaymentScreen: Amount field is read-only
+    User->>PaymentScreen: Enter category & reason
+    User->>PaymentScreen: Tap "Open in UPI App"
 
     PaymentScreen->>StorageService: Save transaction
     StorageService-->>PaymentScreen: Transaction saved
 
-    PaymentScreen->>UPIApp: Launch UPI payment intent
-    UPIApp-->>User: Payment interface
+    PaymentScreen->>SharingAPI: Share QR image
+    SharingAPI-->>User: Native share sheet (UPI apps)
+```
+
+#### Flow 2: QR without Amount (User Enters Amount)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ScannerScreen
+    participant CameraAPI
+    participant UPIParser
+    participant PaymentScreen
+    participant QRGenerator
+    participant URLModifier
+    participant StorageService
+    participant SharingAPI
+
+    User->>ScannerScreen: Tap "Scan QR"
+    ScannerScreen->>CameraAPI: Request camera permission
+    CameraAPI-->>ScannerScreen: Permission granted
+    ScannerScreen->>CameraAPI: Start barcode scanning
+    CameraAPI-->>ScannerScreen: QR code detected
+
+    ScannerScreen->>UPIParser: Parse QR data
+    UPIParser-->>ScannerScreen: Payment data (no amount)
+    
+    Note over ScannerScreen: No amount in QR
+    ScannerScreen->>PaymentScreen: Navigate without QR + amountLocked=false
+    
+    User->>PaymentScreen: Enter amount
+    User->>PaymentScreen: Enter category & reason
+    User->>PaymentScreen: Tap "Open in UPI App"
+
+    PaymentScreen->>URLModifier: modifyUPIUrl(originalUrl, amount, reason)
+    URLModifier-->>PaymentScreen: Modified UPI URL
+    
+    PaymentScreen->>QRGenerator: Generate QR from modified URL
+    QRGenerator-->>PaymentScreen: QR image file
+
+    PaymentScreen->>StorageService: Save transaction
+    StorageService-->>PaymentScreen: Transaction saved
+
+    PaymentScreen->>SharingAPI: Share QR image
+    SharingAPI-->>User: Native share sheet (UPI apps)
+```
+
+#### Flow 3: Manual Entry
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ManualEntryScreen
+    participant URLBuilder
+    participant PaymentScreen
+    participant QRGenerator
+    participant StorageService
+    participant SharingAPI
+
+    User->>ManualEntryScreen: Enter UPI ID
+    ManualEntryScreen->>ManualEntryScreen: Validate UPI ID format
+    ManualEntryScreen->>URLBuilder: buildUPIUrl(upiId, payeeName)
+    URLBuilder-->>ManualEntryScreen: Base UPI URL (no amount)
+    
+    ManualEntryScreen->>PaymentScreen: Navigate with URL + amountLocked=false
+    
+    User->>PaymentScreen: Enter amount
+    User->>PaymentScreen: Enter category & reason
+    User->>PaymentScreen: Tap "Open in UPI App"
+
+    PaymentScreen->>URLBuilder: modifyUPIUrl(baseUrl, amount, reason)
+    URLBuilder-->>PaymentScreen: Complete UPI URL
+    
+    PaymentScreen->>QRGenerator: Generate QR from URL
+    QRGenerator-->>PaymentScreen: QR image file
+
+    PaymentScreen->>StorageService: Save transaction
+    StorageService-->>PaymentScreen: Transaction saved
+
+    PaymentScreen->>SharingAPI: Share QR image
+    SharingAPI-->>User: Native share sheet (UPI apps)
 ```
 
 ### Transaction Search Flow
@@ -529,20 +654,41 @@ sequenceDiagram
 
 ## 🚀 Key Features Implementation
 
-### Smart QR Scanning
+### Smart QR Scanning & Generation
 
 #### Implementation Details
 - **Camera Integration**: Expo Camera API with QR barcode detection
 - **Real-time Processing**: Immediate parsing and validation
+- **Seamless QR Generation**: Background QR generation without loading screens
+- **Amount Locking**: Preserves original QR amount when present (user cannot change)
+- **Dynamic QR Creation**: Generates QR with user-entered amount when original has no amount
 - **Error Handling**: Invalid QR code detection with user feedback
 - **Permission Management**: Camera permission request and handling
 
-#### Technical Flow
+#### Technical Flow - QR with Amount (Locked)
 1. Camera permission check and request
 2. QR code detection using barcode scanner
 3. UPI URL parsing and validation
-4. Data extraction (payee, amount, UPI ID)
-5. Navigation to payment screen with extracted data
+4. Check if original QR contains amount parameter
+5. **If amount exists**: Generate QR image with original URL (amount locked)
+6. Navigate to payment screen with generated QR and locked amount
+7. User cannot modify amount (read-only field)
+
+#### Technical Flow - QR without Amount (Unlocked)
+1. Camera permission check and request
+2. QR code detection using barcode scanner
+3. UPI URL parsing and validation
+4. Check if original QR contains amount parameter
+5. **If no amount**: Navigate to payment screen without QR
+6. User enters amount in payment screen
+7. Payment screen generates QR with user's amount + transaction note
+8. QR generated seamlessly when user clicks "Pay"
+
+#### QR Generation Technology
+- **react-native-qrcode-svg**: SVG-based QR code generation
+- **Off-screen Rendering**: Hidden QR component for seamless generation
+- **File System Integration**: Saves QR images to cache directory
+- **Base64 Conversion**: Converts SVG to PNG for sharing
 
 ### Category Management System
 
@@ -677,7 +823,14 @@ npx tsc --noEmit
 ---
 
 **Author**: Ayush Kansal
-**Version**: 1.0.0
-**Last Updated**: December 2024
+**Version**: 1.1.0
+**Last Updated**: January 2025
+
+### Recent Updates (January 2025)
+- Added seamless QR generation flow documentation
+- Documented amount locking mechanism
+- Updated sequence diagrams for new payment flows
+- Added merchant QR code support details
+- Documented URL modification capabilities
 
 *This documentation provides a comprehensive technical overview of the UPI Tracker application architecture, implementation details, and key design decisions.*

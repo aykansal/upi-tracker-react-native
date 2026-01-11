@@ -34,13 +34,38 @@ export const DEFAULT_CATEGORIES: Record<string, CategoryInfo> = {
   },
 };
 
-// Keep CATEGORIES for backwards compatibility with existing code
-export const CATEGORIES = DEFAULT_CATEGORIES;
-
-export const DEFAULT_CATEGORY_LIST: CategoryInfo[] = Object.values(DEFAULT_CATEGORIES);
-
-// Keep CATEGORY_LIST for backwards compatibility
-export const CATEGORY_LIST = DEFAULT_CATEGORY_LIST;
+export const DEFAULT_CATEGORY_LIST: CategoryInfo[] = [
+  {
+    key: 'food',
+    label: 'Food',
+    icon: 'restaurant',
+    color: '#F59E0B', // Amber
+  },
+  {
+    key: 'utility',
+    label: 'Utility',
+    icon: 'flash',
+    color: '#3B82F6', // Blue
+  },
+  {
+    key: 'college',
+    label: 'College',
+    icon: 'school',
+    color: '#8B5CF6', // Purple
+  },
+  {
+    key: 'rent',
+    label: 'Rent',
+    icon: 'home',
+    color: '#EC4899', // Pink
+  },
+  {
+    key: 'other',
+    label: 'Other',
+    icon: 'pricetag',
+    color: '#6B7280', // Gray
+  },
+];
 
 /**
  * Get category color with fallback
@@ -78,4 +103,3 @@ export const categoryListToRecord = (list: CategoryInfo[]): Record<string, Categ
     return acc;
   }, {} as Record<string, CategoryInfo>);
 };
-

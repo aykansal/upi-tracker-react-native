@@ -1,28 +1,28 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 
-import { Colors, BorderRadius, FontSizes, Spacing } from '@/constants/theme';
-import { isValidUPIId, formatUPIId } from '@/services/upi-parser';
+import { BorderRadius, Colors, FontSizes, Spacing } from '@/constants/theme';
+import { buildUPIUrl } from '@/constants/upi-config';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { formatUPIId, isValidUPIId } from '@/services/upi-parser';
 
 export default function ManualEntryScreen() {
   const [upiId, setUpiId] = useState('');
   const [isValid, setIsValid] = useState(false);
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const colors = Colors.light;
   const insets = useSafeAreaInsets();
 
   const handleUpiIdChange = (text: string) => {
@@ -50,7 +50,13 @@ export default function ManualEntryScreen() {
     const payeeName = trimmedUpiId.split('@')[0];
     const formattedUpiId = formatUPIId(trimmedUpiId);
 
-    // Navigate to payment screen
+    // Build UPI URL (without amount - user will enter in payment screen)
+    const upiUrl = buildUPIUrl({
+      upiId: formattedUpiId,
+      payeeName: payeeName.charAt(0).toUpperCase() + payeeName.slice(1),
+    });
+
+    // Navigate to payment screen - QR will be generated there with user's amount
     router.replace({
       pathname: '/payment',
       params: {
@@ -58,6 +64,14 @@ export default function ManualEntryScreen() {
         payeeName: payeeName.charAt(0).toUpperCase() + payeeName.slice(1),
         amount: '',
         transactionNote: '',
+        // Manual entry is always P2P (not merchant)
+        originalQRData: upiUrl,
+        isMerchant: 'false',
+        merchantCategory: '',
+        organizationId: '',
+        qrImageUri: '', // No QR yet - will be generated in payment screen with user's amount
+        generatedQR: 'false',
+        amountLocked: 'false',
       },
     });
   };
@@ -68,7 +82,7 @@ export default function ManualEntryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
 
       {/* Header */}
       <View
@@ -171,7 +185,7 @@ export default function ManualEntryScreen() {
               styles.continueButton,
               {
                 backgroundColor:
-                  isValid && upiId.trim() ? colors.tint : colors.border,
+                  (isValid && upiId.trim()) ? colors.tint : colors.border,
               },
             ]}
             onPress={handleContinue}
