@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format } from 'date-fns';
 import * as Crypto from 'expo-crypto';
 
-const TRANSACTIONS_KEY = '@upitracker_transactions';
+const TRANSACTIONS_KEY = '@upitracker_transactions_mock'; // mock data key/ compare with original while development
 
 // Mock payee names and UPI IDs
 const mockPayees = [

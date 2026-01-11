@@ -88,8 +88,16 @@ export const getCategories = async (): Promise<CategoryInfo[]> => {
       await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORY_LIST));
       return DEFAULT_CATEGORY_LIST;
     }
+    const parsed = JSON.parse(data);
+    
+    // Validate that parsed data is actually an array
+    if (!Array.isArray(parsed)) {
+      console.warn('[getCategories] Stored data is not an array, resetting to defaults');
+      await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(DEFAULT_CATEGORY_LIST));
+      return DEFAULT_CATEGORY_LIST;
+    }
 
-    return JSON.parse(data); // must be an array
+    return parsed; // must be an array
   } catch (error) {
     console.error('[getCategories] Error getting categories:', error);
     return DEFAULT_CATEGORY_LIST;
@@ -173,7 +181,12 @@ export const deleteCategory = async (key: string): Promise<boolean> => {
 
     // Ensure we always have at least 'other' category
     if (filtered.length === 0) {
-      const otherCategory = DEFAULT_CATEGORY_LIST.find(c => c.key === 'other')!;
+      const otherCategory = DEFAULT_CATEGORY_LIST.find(c => c.key === 'other') ?? {
+        key: 'other',
+        label: 'Other',
+        icon: 'pricetag',
+        color: '#6B7280',
+      };
       filtered.push(otherCategory);
     }
 

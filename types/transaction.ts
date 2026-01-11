@@ -19,7 +19,7 @@ export interface UPIPaymentData {
   transactionNote?: string;
   // Merchant support fields
   originalQRData?: string;        // Preserved original URL for merchants
-  isMerchant: boolean;            // Merchant detection flag
+  isMerchant?: boolean;            // Merchant detection flag
   merchantParams?: MerchantParams; // Merchant-specific params if detected
 }
 

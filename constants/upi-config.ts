@@ -52,9 +52,10 @@ export const modifyUPIUrl = (
   try {
     // Normalize URL
     let normalizedUrl = originalUrl.trim();
-    if (normalizedUrl.toLowerCase().startsWith('upi://')) {
+    let lowerUrl = normalizedUrl.toLowerCase();
+    if (lowerUrl.startsWith('upi://')) {
       normalizedUrl = 'upi://' + normalizedUrl.substring(6);
-    } else if (normalizedUrl.toLowerCase().startsWith('upi:')) {
+    } else if (lowerUrl.startsWith('upi:')) {
       normalizedUrl = 'upi://' + normalizedUrl.substring(4);
     } else {
       return originalUrl; // Return original if can't parse

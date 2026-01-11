@@ -111,24 +111,23 @@ export default function PaymentScreen() {
   };
 
   // Handle UPI app selection
-  const handleAppSelect = (app: UPIApp) => {
+  const handleAppSelect = async (app: UPIApp) => {
     if (!pendingQrUri) return;
 
     try {
-      ExpoUpiAppLauncherModule.shareTo(app.packageName, pendingQrUri);
-      
+      const success = await ExpoUpiAppLauncherModule.shareTo(app.packageName, pendingQrUri);
+    
+      if (!success) {
+        Alert.alert('App Not Available', `${app.name} is not installed or cannot handle this request.`);
+        return;
+      }
       // Navigate back to home after sharing
       setTimeout(() => {
         router.replace("/(tabs)");
       }, 500);
     } catch (error) {
-      // console.error("Error sharing to app:", error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Full error details:", errorMessage);
-      // if (errorMessage.includes("No Activity found to handle Intent")) {
-      //   setToastMessage(`${app.name} is not available. Try another app.`);
-      // }
-      Alert.alert('uncool!!', `${app.name} is not available. you better change it.`);
+      console.error("Error sharing to app:", error);
+      Alert.alert('Error', `Failed to share to ${app.name}. Please try again.`);
     }
   };
 

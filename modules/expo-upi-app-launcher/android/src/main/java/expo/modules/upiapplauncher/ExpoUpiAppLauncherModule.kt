@@ -12,33 +12,29 @@ class ExpoUpiAppLauncherModule : Module() {
     Name("ExpoUpiAppLauncher")
 
     Function("shareTo") { packageName: String, uri: String ->
-      val context = appContext.reactContext ?: return@Function
+      val context = appContext.reactContext
+      if (context == null) {
+        return@Function false
+      }
       val applicationContext = context.applicationContext
 
       // Parse the URI
       val parsedUri = Uri.parse(uri)
       val finalUri: Uri = when {
-        // Convert file:// URIs to content:// URIs using FileProvider
         parsedUri.scheme == "file" -> {
           try {
-            val file = File(parsedUri.path ?: return@Function)
+            val file = File(parsedUri.path ?: return@Function false)
             if (!file.exists()) {
-              return@Function
+              return@Function false
             }
             
-            // Use FileProvider to get content URI
-            // Authority format: {packageName}.fileprovider
             val authority = "${applicationContext.packageName}.fileprovider"
             FileProvider.getUriForFile(applicationContext, authority, file)
           } catch (e: Exception) {
-            // If FileProvider fails, fall back to original URI
             parsedUri
           }
         }
-        else -> {
-          // Already a content:// URI or other scheme
-          parsedUri
-        }
+        else -> parsedUri
       }
 
       val intent = Intent(Intent.ACTION_SEND).apply {
@@ -48,7 +44,13 @@ class ExpoUpiAppLauncherModule : Module() {
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      context.startActivity(intent)
+      
+      try {
+        context.startActivity(intent)
+        true
+      } catch (e: ActivityNotFoundException) {
+        false
+      }
     }
   }
 }
